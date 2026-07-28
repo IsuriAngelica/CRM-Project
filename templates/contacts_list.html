@@ -17,7 +17,7 @@
   <tbody>
     {% for contact in contacts %}
     <tr>
-      <td>{{ contact.name }}</td>
+      <td><a href="{{ url_for('contact_detail', contact_id=contact.id) }}">{{ contact.name }}</a></td>
       <td>{{ contact.company.name }}</td>
       <td>{{ contact.email or "-" }}</td>
       <td>{{ contact.phone or "-" }}</td>

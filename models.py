@@ -54,7 +54,7 @@ class Lead(db.Model):
     assigned_rep_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     source = db.Column(db.String(100))
     status = db.Column(db.String(50), default="new")
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     assigned_rep = db.relationship("User", backref="leads", lazy=True)
 
@@ -83,7 +83,7 @@ class Activity(db.Model):
     related_id = db.Column(db.Integer, nullable=False)
     type = db.Column(db.String(50))
     notes = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
 
 class Reminder(db.Model):

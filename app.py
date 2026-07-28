@@ -98,6 +98,34 @@ def edit_company(company_id):
     return render_template("company_form.html", company=company)
 
 
+@app.route("/companies/<int:company_id>")
+@login_required
+def company_detail(company_id):
+    company = models.Company.query.get_or_404(company_id)
+    activities = (
+        models.Activity.query
+        .filter_by(related_type="Company", related_id=company_id)
+        .order_by(models.Activity.created_at.desc())
+        .all()
+    )
+    return render_template("company_detail.html", company=company, activities=activities)
+
+
+@app.route("/companies/<int:company_id>/activities/add", methods=["POST"])
+@login_required
+def add_company_activity(company_id):
+    models.Company.query.get_or_404(company_id)
+    activity = models.Activity(
+        related_type="Company",
+        related_id=company_id,
+        type=request.form.get("type"),
+        notes=request.form.get("notes"),
+    )
+    db.session.add(activity)
+    db.session.commit()
+    return redirect(url_for("company_detail", company_id=company_id))
+
+
 @app.route("/contacts")
 @login_required
 def contacts():
@@ -135,6 +163,34 @@ def edit_contact(contact_id):
         db.session.commit()
         return redirect(url_for("contacts"))
     return render_template("contact_form.html", contact=contact, companies=all_companies)
+
+
+@app.route("/contacts/<int:contact_id>")
+@login_required
+def contact_detail(contact_id):
+    contact = models.Contact.query.get_or_404(contact_id)
+    activities = (
+        models.Activity.query
+        .filter_by(related_type="Contact", related_id=contact_id)
+        .order_by(models.Activity.created_at.desc())
+        .all()
+    )
+    return render_template("contact_detail.html", contact=contact, activities=activities)
+
+
+@app.route("/contacts/<int:contact_id>/activities/add", methods=["POST"])
+@login_required
+def add_contact_activity(contact_id):
+    models.Contact.query.get_or_404(contact_id)
+    activity = models.Activity(
+        related_type="Contact",
+        related_id=contact_id,
+        type=request.form.get("type"),
+        notes=request.form.get("notes"),
+    )
+    db.session.add(activity)
+    db.session.commit()
+    return redirect(url_for("contact_detail", contact_id=contact_id))
 
 
 @app.route("/leads")
@@ -176,6 +232,34 @@ def edit_lead(lead_id):
         db.session.commit()
         return redirect(url_for("leads"))
     return render_template("lead_form.html", lead=lead, companies=all_companies, users=all_users)
+
+
+@app.route("/leads/<int:lead_id>")
+@login_required
+def lead_detail(lead_id):
+    lead = models.Lead.query.get_or_404(lead_id)
+    activities = (
+        models.Activity.query
+        .filter_by(related_type="Lead", related_id=lead_id)
+        .order_by(models.Activity.created_at.desc())
+        .all()
+    )
+    return render_template("lead_detail.html", lead=lead, activities=activities)
+
+
+@app.route("/leads/<int:lead_id>/activities/add", methods=["POST"])
+@login_required
+def add_lead_activity(lead_id):
+    models.Lead.query.get_or_404(lead_id)
+    activity = models.Activity(
+        related_type="Lead",
+        related_id=lead_id,
+        type=request.form.get("type"),
+        notes=request.form.get("notes"),
+    )
+    db.session.add(activity)
+    db.session.commit()
+    return redirect(url_for("lead_detail", lead_id=lead_id))
 
 
 @app.route("/deals")
@@ -229,6 +313,34 @@ def edit_deal(deal_id):
         db.session.commit()
         return redirect(url_for("deals"))
     return render_template("deal_form.html", deal=deal, companies=all_companies, contacts=all_contacts, users=all_users)
+
+
+@app.route("/deals/<int:deal_id>")
+@login_required
+def deal_detail(deal_id):
+    deal = models.Deal.query.get_or_404(deal_id)
+    activities = (
+        models.Activity.query
+        .filter_by(related_type="Deal", related_id=deal_id)
+        .order_by(models.Activity.created_at.desc())
+        .all()
+    )
+    return render_template("deal_detail.html", deal=deal, activities=activities)
+
+
+@app.route("/deals/<int:deal_id>/activities/add", methods=["POST"])
+@login_required
+def add_deal_activity(deal_id):
+    models.Deal.query.get_or_404(deal_id)
+    activity = models.Activity(
+        related_type="Deal",
+        related_id=deal_id,
+        type=request.form.get("type"),
+        notes=request.form.get("notes"),
+    )
+    db.session.add(activity)
+    db.session.commit()
+    return redirect(url_for("deal_detail", deal_id=deal_id))
 
 
 if __name__ == "__main__":

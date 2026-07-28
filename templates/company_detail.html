@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2>{{ company.name }}</h2>
+    <p class="text-muted mb-0">
+      {{ company.industry or "-" }} &middot; {{ company.phone or "-" }} &middot; {{ company.address or "-" }}
+    </p>
+  </div>
+  <a href="{{ url_for('edit_company', company_id=company.id) }}" class="btn btn-outline-secondary">Edit company</a>
+</div>
+
+<hr>
+
+<h4>Log an activity</h4>
+<form method="POST" action="{{ url_for('add_company_activity', company_id=company.id) }}" class="row g-2 align-items-end mb-4">
+  <div class="col-auto">
+    <label class="form-label">Type</label>
+    <select name="type" class="form-select">
+      <option value="Call">Call</option>
+      <option value="Email">Email</option>
+      <option value="Meeting">Meeting</option>
+      <option value="Note">Note</option>
+    </select>
+  </div>
+  <div class="col">
+    <label class="form-label">What happened / was discussed</label>
+    <input type="text" name="notes" class="form-control" placeholder="e.g. Discussed pricing, sent proposal..." required>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-dark">Log activity</button>
+  </div>
+</form>
+
+<h4>Timeline</h4>
+<ul class="list-group">
+  {% for activity in activities %}
+  <li class="list-group-item">
+    <span class="badge bg-secondary">{{ activity.type }}</span>
+    {{ activity.notes }}
+    <div class="text-muted small">{{ activity.created_at.strftime("%d %b %Y, %I:%M %p") if activity.created_at else "" }}</div>
+  </li>
+  {% else %}
+  <li class="list-group-item text-muted text-center">No activity logged yet.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

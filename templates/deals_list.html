@@ -19,7 +19,7 @@
   <tbody>
     {% for deal in deals %}
     <tr>
-      <td>{{ deal.company.name }}</td>
+      <td><a href="{{ url_for('deal_detail', deal_id=deal.id) }}">{{ deal.company.name }}</a></td>
       <td>{{ deal.primary_contact.name if deal.primary_contact else "-" }}</td>
       <td>{{ deal.owner.name if deal.owner else "-" }}</td>
       <td><span class="badge bg-primary">{{ deal.stage }}</span></td>
