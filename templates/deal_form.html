@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-3">{{ "Edit deal" if deal else "Add deal" }}</h2>
+<form method="POST">
+  <div class="mb-3">
+    <label class="form-label">Company</label>
+    <select name="company_id" class="form-select" required>
+      <option value="">-- Select a company --</option>
+      {% for company in companies %}
+        <option value="{{ company.id }}" {% if deal and deal.company_id == company.id %}selected{% endif %}>
+          {{ company.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Primary contact (optional)</label>
+    <select name="contact_id" class="form-select">
+      <option value="">-- None --</option>
+      {% for contact in contacts %}
+        <option value="{{ contact.id }}" {% if deal and deal.contact_id == contact.id %}selected{% endif %}>
+          {{ contact.name }} ({{ contact.company.name }})
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Owner</label>
+    <select name="owner_id" class="form-select">
+      <option value="">-- Unassigned --</option>
+      {% for user in users %}
+        <option value="{{ user.id }}" {% if deal and deal.owner_id == user.id %}selected{% endif %}>
+          {{ user.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Stage</label>
+    <select name="stage" class="form-select">
+      {% for s in ["new", "contacted", "proposal", "negotiation", "won", "lost"] %}
+        <option value="{{ s }}" {% if deal and deal.stage == s %}selected{% endif %}>{{ s|capitalize }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Value (LKR)</label>
+    <input type="number" step="0.01" name="value" class="form-control" value="{{ deal.value if deal else '' }}">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Expected close date</label>
+    <input type="date" name="close_date" class="form-control" value="{{ deal.close_date if deal else '' }}">
+  </div>
+  <button type="submit" class="btn btn-dark">Save deal</button>
+  <a href="{{ url_for('deals') }}" class="btn btn-outline-secondary">Cancel</a>
+</form>
+{% endblock %}
