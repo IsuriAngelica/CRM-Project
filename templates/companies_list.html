@@ -11,6 +11,7 @@
       <th>Industry</th>
       <th>Phone</th>
       <th>Address</th>
+      <th></th>
     </tr>
   </thead>
   <tbody>
@@ -20,9 +21,10 @@
       <td>{{ company.industry or "-" }}</td>
       <td>{{ company.phone or "-" }}</td>
       <td>{{ company.address or "-" }}</td>
+      <td><a href="{{ url_for('edit_company', company_id=company.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a></td>
     </tr>
     {% else %}
-    <tr><td colspan="4" class="text-center text-muted">No companies yet — add your first one.</td></tr>
+    <tr><td colspan="5" class="text-center text-muted">No companies yet — add your first one.</td></tr>
     {% endfor %}
   </tbody>
 </table>

@@ -83,5 +83,58 @@ def add_company():
     return render_template("company_form.html")
 
 
+@app.route("/companies/<int:company_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_company(company_id):
+    company = models.Company.query.get_or_404(company_id)
+    if request.method == "POST":
+        company.name = request.form.get("name")
+        company.industry = request.form.get("industry")
+        company.phone = request.form.get("phone")
+        company.address = request.form.get("address")
+        db.session.commit()
+        return redirect(url_for("companies"))
+    return render_template("company_form.html", company=company)
+
+
+@app.route("/contacts")
+@login_required
+def contacts():
+    all_contacts = models.Contact.query.order_by(models.Contact.name).all()
+    return render_template("contacts_list.html", contacts=all_contacts)
+
+
+@app.route("/contacts/add", methods=["GET", "POST"])
+@login_required
+def add_contact():
+    all_companies = models.Company.query.order_by(models.Company.name).all()
+    if request.method == "POST":
+        contact = models.Contact(
+            company_id=request.form.get("company_id"),
+            name=request.form.get("name"),
+            email=request.form.get("email"),
+            phone=request.form.get("phone"),
+        )
+        db.session.add(contact)
+        db.session.commit()
+        return redirect(url_for("contacts"))
+    return render_template("contact_form.html", companies=all_companies)
+
+
+@app.route("/contacts/<int:contact_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_contact(contact_id):
+    contact = models.Contact.query.get_or_404(contact_id)
+    all_companies = models.Company.query.order_by(models.Company.name).all()
+    if request.method == "POST":
+        contact.company_id = request.form.get("company_id")
+        contact.name = request.form.get("name")
+        contact.email = request.form.get("email")
+        contact.phone = request.form.get("phone")
+        db.session.commit()
+        return redirect(url_for("contacts"))
+    return render_template("contact_form.html", contact=contact, companies=all_companies)
+
+
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,22 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 class="mb-3">Add company</h2>
+<h2 class="mb-3">{{ "Edit company" if company else "Add company" }}</h2>
 <form method="POST">
   <div class="mb-3">
     <label class="form-label">Company name</label>
-    <input type="text" name="name" class="form-control" required>
+    <input type="text" name="name" class="form-control" value="{{ company.name if company else '' }}" required>
   </div>
   <div class="mb-3">
     <label class="form-label">Industry</label>
-    <input type="text" name="industry" class="form-control">
+    <input type="text" name="industry" class="form-control" value="{{ company.industry if company else '' }}">
   </div>
   <div class="mb-3">
     <label class="form-label">Phone</label>
-    <input type="text" name="phone" class="form-control">
+    <input type="text" name="phone" class="form-control" value="{{ company.phone if company else '' }}">
   </div>
   <div class="mb-3">
     <label class="form-label">Address</label>
-    <input type="text" name="address" class="form-control">
+    <input type="text" name="address" class="form-control" value="{{ company.address if company else '' }}">
   </div>
   <button type="submit" class="btn btn-dark">Save company</button>
   <a href="{{ url_for('companies') }}" class="btn btn-outline-secondary">Cancel</a>
