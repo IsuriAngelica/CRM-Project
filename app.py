@@ -60,5 +60,28 @@ def dashboard():
     return render_template("dashboard.html")
 
 
+@app.route("/companies")
+@login_required
+def companies():
+    all_companies = models.Company.query.order_by(models.Company.name).all()
+    return render_template("companies_list.html", companies=all_companies)
+
+
+@app.route("/companies/add", methods=["GET", "POST"])
+@login_required
+def add_company():
+    if request.method == "POST":
+        company = models.Company(
+            name=request.form.get("name"),
+            industry=request.form.get("industry"),
+            phone=request.form.get("phone"),
+            address=request.form.get("address"),
+        )
+        db.session.add(company)
+        db.session.commit()
+        return redirect(url_for("companies"))
+    return render_template("company_form.html")
+
+
 if __name__ == "__main__":
     app.run(debug=True)

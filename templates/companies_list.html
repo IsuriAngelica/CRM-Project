@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Companies</h2>
+  <a href="{{ url_for('add_company') }}" class="btn btn-dark">+ Add company</a>
+</div>
+<table class="table table-bordered bg-white">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Industry</th>
+      <th>Phone</th>
+      <th>Address</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for company in companies %}
+    <tr>
+      <td>{{ company.name }}</td>
+      <td>{{ company.industry or "-" }}</td>
+      <td>{{ company.phone or "-" }}</td>
+      <td>{{ company.address or "-" }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="text-center text-muted">No companies yet — add your first one.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
