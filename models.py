@@ -69,6 +69,8 @@ class Deal(db.Model):
     stage = db.Column(db.String(50), default="new")
     value = db.Column(db.Numeric(12, 2))
     close_date = db.Column(db.Date, nullable=True)
+    requirements = db.Column(db.Text)
+    budget = db.Column(db.Numeric(12, 2))
 
     owner = db.relationship("User", backref="deals", lazy=True)
 

@@ -200,6 +200,8 @@ def add_deal():
             stage=request.form.get("stage"),
             value=request.form.get("value") or None,
             close_date=datetime.strptime(close_date_str, "%Y-%m-%d").date() if close_date_str else None,
+            requirements=request.form.get("requirements"),
+            budget=request.form.get("budget") or None,
         )
         db.session.add(deal)
         db.session.commit()
@@ -222,6 +224,8 @@ def edit_deal(deal_id):
         deal.stage = request.form.get("stage")
         deal.value = request.form.get("value") or None
         deal.close_date = datetime.strptime(close_date_str, "%Y-%m-%d").date() if close_date_str else None
+        deal.requirements = request.form.get("requirements")
+        deal.budget = request.form.get("budget") or None
         db.session.commit()
         return redirect(url_for("deals"))
     return render_template("deal_form.html", deal=deal, companies=all_companies, contacts=all_contacts, users=all_users)

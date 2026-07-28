@@ -51,6 +51,14 @@
     <label class="form-label">Expected close date</label>
     <input type="date" name="close_date" class="form-control" value="{{ deal.close_date if deal else '' }}">
   </div>
+  <div class="mb-3">
+    <label class="form-label">Budget (LKR)</label>
+    <input type="number" step="0.01" name="budget" class="form-control" value="{{ deal.budget if deal else '' }}">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Agreed requirements</label>
+    <textarea name="requirements" class="form-control" rows="3">{{ deal.requirements if deal else '' }}</textarea>
+  </div>
   <button type="submit" class="btn btn-dark">Save deal</button>
   <a href="{{ url_for('deals') }}" class="btn btn-outline-secondary">Cancel</a>
 </form>
