@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-3">{{ "Edit lead" if lead else "Add lead" }}</h2>
+<form method="POST">
+  <div class="mb-3">
+    <label class="form-label">Company (optional)</label>
+    <select name="company_id" class="form-select">
+      <option value="">-- None --</option>
+      {% for company in companies %}
+        <option value="{{ company.id }}" {% if lead and lead.company_id == company.id %}selected{% endif %}>
+          {{ company.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Assigned rep</label>
+    <select name="assigned_rep_id" class="form-select">
+      <option value="">-- Unassigned --</option>
+      {% for user in users %}
+        <option value="{{ user.id }}" {% if lead and lead.assigned_rep_id == user.id %}selected{% endif %}>
+          {{ user.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Source</label>
+    <select name="source" class="form-select">
+      {% for s in ["Inbound", "Outbound", "Partner", "Referral"] %}
+        <option value="{{ s }}" {% if lead and lead.source == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Status</label>
+    <select name="status" class="form-select">
+      {% for s in ["new", "contacted", "qualified", "lost"] %}
+        <option value="{{ s }}" {% if lead and lead.status == s %}selected{% endif %}>{{ s|capitalize }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn btn-dark">Save lead</button>
+  <a href="{{ url_for('leads') }}" class="btn btn-outline-secondary">Cancel</a>
+</form>
+{% endblock %}

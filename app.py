@@ -136,5 +136,46 @@ def edit_contact(contact_id):
     return render_template("contact_form.html", contact=contact, companies=all_companies)
 
 
+@app.route("/leads")
+@login_required
+def leads():
+    all_leads = models.Lead.query.order_by(models.Lead.created_at.desc()).all()
+    return render_template("leads_list.html", leads=all_leads)
+
+
+@app.route("/leads/add", methods=["GET", "POST"])
+@login_required
+def add_lead():
+    all_companies = models.Company.query.order_by(models.Company.name).all()
+    all_users = models.User.query.order_by(models.User.name).all()
+    if request.method == "POST":
+        lead = models.Lead(
+            company_id=request.form.get("company_id") or None,
+            assigned_rep_id=request.form.get("assigned_rep_id") or None,
+            source=request.form.get("source"),
+            status=request.form.get("status"),
+        )
+        db.session.add(lead)
+        db.session.commit()
+        return redirect(url_for("leads"))
+    return render_template("lead_form.html", companies=all_companies, users=all_users)
+
+
+@app.route("/leads/<int:lead_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_lead(lead_id):
+    lead = models.Lead.query.get_or_404(lead_id)
+    all_companies = models.Company.query.order_by(models.Company.name).all()
+    all_users = models.User.query.order_by(models.User.name).all()
+    if request.method == "POST":
+        lead.company_id = request.form.get("company_id") or None
+        lead.assigned_rep_id = request.form.get("assigned_rep_id") or None
+        lead.source = request.form.get("source")
+        lead.status = request.form.get("status")
+        db.session.commit()
+        return redirect(url_for("leads"))
+    return render_template("lead_form.html", lead=lead, companies=all_companies, users=all_users)
+
+
 if __name__ == "__main__":
     app.run(debug=True)

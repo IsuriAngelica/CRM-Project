@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Leads</h2>
+  <a href="{{ url_for('add_lead') }}" class="btn btn-dark">+ Add lead</a>
+</div>
+<table class="table table-bordered bg-white">
+  <thead>
+    <tr>
+      <th>Lead / Company</th>
+      <th>Source</th>
+      <th>Status</th>
+      <th>Assigned rep</th>
+      <th>Date added</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for lead in leads %}
+    <tr>
+      <td>{{ lead.company.name if lead.company else "-" }}</td>
+      <td><span class="badge bg-secondary">{{ lead.source or "-" }}</span></td>
+      <td><span class="badge bg-info text-dark">{{ lead.status }}</span></td>
+      <td>{{ lead.assigned_rep.name if lead.assigned_rep else "-" }}</td>
+      <td>{{ lead.created_at.strftime("%d %b %Y") if lead.created_at else "-" }}</td>
+      <td><a href="{{ url_for('edit_lead', lead_id=lead.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="text-center text-muted">No leads yet — add your first one.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
