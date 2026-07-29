@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-2">Pipeline stages</h2>
+<p class="text-muted">These control the columns on the Deal Pipeline board and the Stage dropdown when adding or editing a deal.</p>
+
+<table class="table table-bordered bg-white w-50">
+  <thead><tr><th>Order</th><th>Stage name</th><th>Deals using it</th><th></th></tr></thead>
+  <tbody>
+    {% for stage in stages %}
+    <tr>
+      <td>{{ stage.position }}</td>
+      <td>{{ stage.name|capitalize }}</td>
+      <td>{{ deal_counts.get(stage.name, 0) }}</td>
+      <td>
+        <form method="POST" action="{{ url_for('delete_stage', stage_id=stage.id) }}"
+              onsubmit="return confirm('Delete this stage?');" class="d-inline">
+          <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h5 class="mt-4">Add a new stage</h5>
+<form method="POST" action="{{ url_for('add_stage') }}" class="row g-2 align-items-end">
+  <div class="col-auto">
+    <label class="form-label">Stage name</label>
+    <input type="text" name="name" class="form-control" placeholder="e.g. demo_scheduled" required>
+  </div>
+  <div class="col-auto">
+    <label class="form-label">Order position</label>
+    <input type="number" name="position" class="form-control" value="{{ stages|length }}">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-dark">Add stage</button>
+  </div>
+</form>
+{% endblock %}

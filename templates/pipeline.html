@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Deal pipeline</h2>
+<div class="row g-3">
+  {% for stage in stages %}
+  <div class="col">
+    <h6 class="text-uppercase text-muted">
+      {{ stage|capitalize }}
+      <span class="badge bg-light text-dark">{{ deals_by_stage[stage]|length }}</span>
+    </h6>
+    <div class="border rounded p-2 bg-light" style="min-height: 400px;"
+         ondragover="allowDrop(event)" ondrop="drop(event)" data-stage="{{ stage }}">
+      {% for deal in deals_by_stage[stage] %}
+      <div class="card mb-2" draggable="true" ondragstart="drag(event)" data-id="{{ deal.id }}">
+        <div class="card-body p-2">
+          <a href="{{ url_for('deal_detail', deal_id=deal.id) }}" class="fw-bold text-decoration-none">
+            {{ deal.company.name }}
+          </a>
+          <div class="small text-muted">{{ "%.0f"|format(deal.value) if deal.value else "-" }} LKR</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+function allowDrop(ev) {
+  ev.preventDefault();
+}
+
+function drag(ev) {
+  ev.dataTransfer.setData("dealId", ev.target.dataset.id);
+}
+
+function drop(ev) {
+  ev.preventDefault();
+  const dealId = ev.dataTransfer.getData("dealId");
+  const newStage = ev.currentTarget.dataset.stage;
+  const cardEl = document.querySelector(`[data-id="${dealId}"]`);
+  ev.currentTarget.appendChild(cardEl);
+
+  fetch(`/deals/${dealId}/update_stage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ stage: newStage })
+  });
+}
+</script>
+{% endblock %}

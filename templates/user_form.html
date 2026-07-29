@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-3">{{ "Edit user" if user else "Add user" }}</h2>
+<form method="POST">
+  <div class="mb-3">
+    <label class="form-label">Name</label>
+    <input type="text" name="name" class="form-control" value="{{ user.name if user else '' }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Email</label>
+    <input type="email" name="email" class="form-control" value="{{ user.email if user else '' }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Role</label>
+    <select name="role" class="form-select">
+      {% for r in ["account_executive", "sales_manager", "marketing", "delivery", "ceo", "admin"] %}
+        <option value="{{ r }}" {% if user and user.role == r %}selected{% endif %}>
+          {{ r.replace("_", " ")|capitalize }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{{ "New password (leave blank to keep current)" if user else "Password" }}</label>
+    <input type="password" name="password" class="form-control" {% if not user %}required{% endif %}>
+  </div>
+  <button type="submit" class="btn btn-dark">Save user</button>
+  <a href="{{ url_for('users') }}" class="btn btn-outline-secondary">Cancel</a>
+</form>
+{% endblock %}

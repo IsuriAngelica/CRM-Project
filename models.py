@@ -20,6 +20,14 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
 
+class Stage(db.Model):
+    __tablename__ = "stages"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    position = db.Column(db.Integer, nullable=False, default=0)
+
+
 class Company(db.Model):
     __tablename__ = "companies"
 

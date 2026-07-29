@@ -38,7 +38,7 @@
   <div class="mb-3">
     <label class="form-label">Stage</label>
     <select name="stage" class="form-select">
-      {% for s in ["new", "contacted", "proposal", "negotiation", "won", "lost"] %}
+      {% for s in stages %}
         <option value="{{ s }}" {% if deal and deal.stage == s %}selected{% endif %}>{{ s|capitalize }}</option>
       {% endfor %}
     </select>

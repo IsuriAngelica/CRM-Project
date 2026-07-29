@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import Flask, render_template, redirect, url_for, request, flash
+from flask import Flask, render_template, redirect, url_for, request, flash, jsonify
 from flask_migrate import Migrate
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
@@ -26,6 +26,10 @@ import models  # noqa: E402
 @login_manager.user_loader
 def load_user(user_id):
     return models.User.query.get(int(user_id))
+
+
+def get_stage_names():
+    return [s.name for s in models.Stage.query.order_by(models.Stage.position).all()]
 
 
 @app.route("/")
@@ -290,7 +294,10 @@ def add_deal():
         db.session.add(deal)
         db.session.commit()
         return redirect(url_for("deals"))
-    return render_template("deal_form.html", companies=all_companies, contacts=all_contacts, users=all_users)
+    return render_template(
+        "deal_form.html", companies=all_companies, contacts=all_contacts,
+        users=all_users, stages=get_stage_names()
+    )
 
 
 @app.route("/deals/<int:deal_id>/edit", methods=["GET", "POST"])
@@ -312,7 +319,10 @@ def edit_deal(deal_id):
         deal.budget = request.form.get("budget") or None
         db.session.commit()
         return redirect(url_for("deals"))
-    return render_template("deal_form.html", deal=deal, companies=all_companies, contacts=all_contacts, users=all_users)
+    return render_template(
+        "deal_form.html", deal=deal, companies=all_companies, contacts=all_contacts,
+        users=all_users, stages=get_stage_names()
+    )
 
 
 @app.route("/deals/<int:deal_id>")
@@ -341,6 +351,110 @@ def add_deal_activity(deal_id):
     db.session.add(activity)
     db.session.commit()
     return redirect(url_for("deal_detail", deal_id=deal_id))
+
+
+@app.route("/pipeline")
+@login_required
+def pipeline():
+    stages = get_stage_names()
+    all_deals = models.Deal.query.all()
+    deals_by_stage = {s: [] for s in stages}
+    for d in all_deals:
+        if d.stage in deals_by_stage:
+            deals_by_stage[d.stage].append(d)
+    return render_template("pipeline.html", stages=stages, deals_by_stage=deals_by_stage)
+
+
+@app.route("/deals/<int:deal_id>/update_stage", methods=["POST"])
+@login_required
+def update_deal_stage(deal_id):
+    deal = models.Deal.query.get_or_404(deal_id)
+    data = request.get_json()
+    new_stage = data.get("stage") if data else None
+    if new_stage in get_stage_names():
+        deal.stage = new_stage
+        db.session.commit()
+        return jsonify({"success": True})
+    return jsonify({"success": False}), 400
+
+
+@app.route("/stages")
+@login_required
+def manage_stages():
+    all_stages = models.Stage.query.order_by(models.Stage.position).all()
+    deal_counts = {}
+    for stage in all_stages:
+        deal_counts[stage.name] = models.Deal.query.filter_by(stage=stage.name).count()
+    return render_template("stages_list.html", stages=all_stages, deal_counts=deal_counts)
+
+
+@app.route("/stages/add", methods=["POST"])
+@login_required
+def add_stage():
+    name = (request.form.get("name") or "").strip().lower()
+    position = request.form.get("position") or 0
+    if name:
+        existing = models.Stage.query.filter_by(name=name).first()
+        if not existing:
+            db.session.add(models.Stage(name=name, position=int(position)))
+            db.session.commit()
+    return redirect(url_for("manage_stages"))
+
+
+@app.route("/stages/<int:stage_id>/delete", methods=["POST"])
+@login_required
+def delete_stage(stage_id):
+    stage = models.Stage.query.get_or_404(stage_id)
+    deals_using_it = models.Deal.query.filter_by(stage=stage.name).count()
+    if deals_using_it > 0:
+        flash(f'Cannot delete "{stage.name}" — {deals_using_it} deal(s) are currently using it. Move them to another stage first.')
+        return redirect(url_for("manage_stages"))
+    db.session.delete(stage)
+    db.session.commit()
+    return redirect(url_for("manage_stages"))
+
+
+@app.route("/users")
+@login_required
+def users():
+    all_users = models.User.query.order_by(models.User.name).all()
+    return render_template("users_list.html", users=all_users)
+
+
+@app.route("/users/add", methods=["GET", "POST"])
+@login_required
+def add_user():
+    if request.method == "POST":
+        existing = models.User.query.filter_by(email=request.form.get("email")).first()
+        if existing:
+            flash("A user with that email already exists.")
+            return redirect(url_for("add_user"))
+        new_user = models.User(
+            name=request.form.get("name"),
+            email=request.form.get("email"),
+            role=request.form.get("role"),
+        )
+        new_user.set_password(request.form.get("password"))
+        db.session.add(new_user)
+        db.session.commit()
+        return redirect(url_for("users"))
+    return render_template("user_form.html")
+
+
+@app.route("/users/<int:user_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_user(user_id):
+    user = models.User.query.get_or_404(user_id)
+    if request.method == "POST":
+        user.name = request.form.get("name")
+        user.email = request.form.get("email")
+        user.role = request.form.get("role")
+        new_password = request.form.get("password")
+        if new_password:
+            user.set_password(new_password)
+        db.session.commit()
+        return redirect(url_for("users"))
+    return render_template("user_form.html", user=user)
 
 
 if __name__ == "__main__":
