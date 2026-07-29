@@ -1,5 +1,6 @@
 from datetime import datetime
-from flask import Flask, render_template, redirect, url_for, request, flash, jsonify
+from functools import wraps
+from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, abort
 from flask_migrate import Migrate
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
@@ -30,6 +31,22 @@ def load_user(user_id):
 
 def get_stage_names():
     return [s.name for s in models.Stage.query.order_by(models.Stage.position).all()]
+
+
+def role_required(*allowed_roles):
+    def decorator(f):
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            if current_user.role not in allowed_roles:
+                abort(403)
+            return f(*args, **kwargs)
+        return wrapped
+    return decorator
+
+
+@app.errorhandler(403)
+def forbidden(e):
+    return render_template("403.html"), 403
 
 
 @app.route("/")
@@ -200,7 +217,10 @@ def add_contact_activity(contact_id):
 @app.route("/leads")
 @login_required
 def leads():
-    all_leads = models.Lead.query.order_by(models.Lead.created_at.desc()).all()
+    query = models.Lead.query
+    if current_user.role == "account_executive":
+        query = query.filter_by(assigned_rep_id=current_user.id)
+    all_leads = query.order_by(models.Lead.created_at.desc()).all()
     return render_template("leads_list.html", leads=all_leads)
 
 
@@ -226,6 +246,8 @@ def add_lead():
 @login_required
 def edit_lead(lead_id):
     lead = models.Lead.query.get_or_404(lead_id)
+    if current_user.role == "account_executive" and lead.assigned_rep_id != current_user.id:
+        abort(403)
     all_companies = models.Company.query.order_by(models.Company.name).all()
     all_users = models.User.query.order_by(models.User.name).all()
     if request.method == "POST":
@@ -242,6 +264,8 @@ def edit_lead(lead_id):
 @login_required
 def lead_detail(lead_id):
     lead = models.Lead.query.get_or_404(lead_id)
+    if current_user.role == "account_executive" and lead.assigned_rep_id != current_user.id:
+        abort(403)
     activities = (
         models.Activity.query
         .filter_by(related_type="Lead", related_id=lead_id)
@@ -269,7 +293,10 @@ def add_lead_activity(lead_id):
 @app.route("/deals")
 @login_required
 def deals():
-    all_deals = models.Deal.query.order_by(models.Deal.id.desc()).all()
+    query = models.Deal.query
+    if current_user.role == "account_executive":
+        query = query.filter_by(owner_id=current_user.id)
+    all_deals = query.order_by(models.Deal.id.desc()).all()
     return render_template("deals_list.html", deals=all_deals)
 
 
@@ -304,6 +331,8 @@ def add_deal():
 @login_required
 def edit_deal(deal_id):
     deal = models.Deal.query.get_or_404(deal_id)
+    if current_user.role == "account_executive" and deal.owner_id != current_user.id:
+        abort(403)
     all_companies = models.Company.query.order_by(models.Company.name).all()
     all_contacts = models.Contact.query.order_by(models.Contact.name).all()
     all_users = models.User.query.order_by(models.User.name).all()
@@ -329,6 +358,8 @@ def edit_deal(deal_id):
 @login_required
 def deal_detail(deal_id):
     deal = models.Deal.query.get_or_404(deal_id)
+    if current_user.role == "account_executive" and deal.owner_id != current_user.id:
+        abort(403)
     activities = (
         models.Activity.query
         .filter_by(related_type="Deal", related_id=deal_id)
@@ -357,7 +388,10 @@ def add_deal_activity(deal_id):
 @login_required
 def pipeline():
     stages = get_stage_names()
-    all_deals = models.Deal.query.all()
+    query = models.Deal.query
+    if current_user.role == "account_executive":
+        query = query.filter_by(owner_id=current_user.id)
+    all_deals = query.all()
     deals_by_stage = {s: [] for s in stages}
     for d in all_deals:
         if d.stage in deals_by_stage:
@@ -369,6 +403,8 @@ def pipeline():
 @login_required
 def update_deal_stage(deal_id):
     deal = models.Deal.query.get_or_404(deal_id)
+    if current_user.role == "account_executive" and deal.owner_id != current_user.id:
+        abort(403)
     data = request.get_json()
     new_stage = data.get("stage") if data else None
     if new_stage in get_stage_names():
@@ -380,6 +416,7 @@ def update_deal_stage(deal_id):
 
 @app.route("/stages")
 @login_required
+@role_required("admin", "sales_manager")
 def manage_stages():
     all_stages = models.Stage.query.order_by(models.Stage.position).all()
     deal_counts = {}
@@ -390,6 +427,7 @@ def manage_stages():
 
 @app.route("/stages/add", methods=["POST"])
 @login_required
+@role_required("admin", "sales_manager")
 def add_stage():
     name = (request.form.get("name") or "").strip().lower()
     position = request.form.get("position") or 0
@@ -403,6 +441,7 @@ def add_stage():
 
 @app.route("/stages/<int:stage_id>/delete", methods=["POST"])
 @login_required
+@role_required("admin", "sales_manager")
 def delete_stage(stage_id):
     stage = models.Stage.query.get_or_404(stage_id)
     deals_using_it = models.Deal.query.filter_by(stage=stage.name).count()
@@ -416,6 +455,7 @@ def delete_stage(stage_id):
 
 @app.route("/users")
 @login_required
+@role_required("admin", "sales_manager")
 def users():
     all_users = models.User.query.order_by(models.User.name).all()
     return render_template("users_list.html", users=all_users)
@@ -423,6 +463,7 @@ def users():
 
 @app.route("/users/add", methods=["GET", "POST"])
 @login_required
+@role_required("admin", "sales_manager")
 def add_user():
     if request.method == "POST":
         existing = models.User.query.filter_by(email=request.form.get("email")).first()
@@ -443,6 +484,7 @@ def add_user():
 
 @app.route("/users/<int:user_id>/edit", methods=["GET", "POST"])
 @login_required
+@role_required("admin", "sales_manager")
 def edit_user(user_id):
     user = models.User.query.get_or_404(user_id)
     if request.method == "POST":
