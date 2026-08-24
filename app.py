@@ -1,8 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, abort
 from flask_migrate import Migrate
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_mail import Mail, Message
 from dotenv import load_dotenv
 import os
 
@@ -14,8 +15,16 @@ app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 
+app.config["MAIL_SERVER"] = "smtp.gmail.com"
+app.config["MAIL_PORT"] = 587
+app.config["MAIL_USE_TLS"] = True
+app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
+app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
+app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_USERNAME")
+
 db.init_app(app)
 migrate = Migrate(app, db)
+mail = Mail(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -46,7 +55,7 @@ def role_required(*allowed_roles):
 
 @app.errorhandler(403)
 def forbidden(e):
-    return render_template("403.html"), 403
+    return render_template("403.html"), 403 if False else ("<h3>🚫 Access denied</h3><p>You don't have permission to view this page.</p>", 403)
 
 
 @app.route("/")
@@ -76,10 +85,91 @@ def logout():
     return redirect(url_for("login"))
 
 
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        email = request.form.get("email")
+        user = models.User.query.filter_by(email=email).first()
+        if user:
+            token_str = models.PasswordResetToken.generate_token()
+            reset_token = models.PasswordResetToken(
+                user_id=user.id,
+                token=token_str,
+                expires_at=datetime.now() + timedelta(minutes=30),
+            )
+            db.session.add(reset_token)
+            db.session.commit()
+
+            reset_url = url_for("reset_password", token=token_str, _external=True)
+            msg = Message("Reset your CRM password", recipients=[user.email])
+            msg.body = (
+                f"Hi {user.name},\n\n"
+                f"Click this link to reset your password (valid for 30 minutes):\n\n"
+                f"{reset_url}\n\n"
+                f"If you didn't request this, you can ignore this email."
+            )
+            mail.send(msg)
+
+        flash("If that email exists in our system, a reset link has been sent.")
+        return redirect(url_for("login"))
+    return render_template("forgot_password.html")
+
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    reset_token = models.PasswordResetToken.query.filter_by(token=token).first()
+
+    if not reset_token or not reset_token.is_valid():
+        flash("This reset link is invalid or has expired. Please request a new one.")
+        return redirect(url_for("forgot_password"))
+
+    if request.method == "POST":
+        new_password = request.form.get("new_password")
+        confirm_password = request.form.get("confirm_password")
+
+        if new_password != confirm_password:
+            flash("Passwords do not match.")
+            return redirect(url_for("reset_password", token=token))
+
+        user = reset_token.user
+        user.set_password(new_password)
+        reset_token.used = True
+        db.session.commit()
+
+        flash("Your password has been reset. Please sign in.")
+        return redirect(url_for("login"))
+
+    return render_template("reset_password.html", token=token)
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
     return render_template("dashboard.html")
+
+
+@app.route("/change-password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    if request.method == "POST":
+        current_password = request.form.get("current_password")
+        new_password = request.form.get("new_password")
+        confirm_password = request.form.get("confirm_password")
+
+        if not current_user.check_password(current_password):
+            flash("Your current password is incorrect.")
+            return redirect(url_for("change_password"))
+
+        if new_password != confirm_password:
+            flash("New password and confirmation do not match.")
+            return redirect(url_for("change_password"))
+
+        current_user.set_password(new_password)
+        db.session.commit()
+        flash("Password updated successfully.")
+        return redirect(url_for("dashboard"))
+
+    return render_template("change_password.html")
 
 
 @app.route("/companies")
