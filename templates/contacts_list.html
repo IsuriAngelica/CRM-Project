@@ -8,6 +8,7 @@
   <thead>
     <tr>
       <th>Name</th>
+      <th>Role</th>
       <th>Company</th>
       <th>Email</th>
       <th>Phone</th>
@@ -18,13 +19,21 @@
     {% for contact in contacts %}
     <tr>
       <td><a href="{{ url_for('contact_detail', contact_id=contact.id) }}">{{ contact.name }}</a></td>
+      <td>{{ contact.role_title or "-" }}</td>
       <td>{{ contact.company.name }}</td>
       <td>{{ contact.email or "-" }}</td>
       <td>{{ contact.phone or "-" }}</td>
-      <td><a href="{{ url_for('edit_contact', contact_id=contact.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a></td>
+      <td class="text-nowrap">
+        <a href="{{ url_for('edit_contact', contact_id=contact.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+        {% if current_user.role in ["admin", "sales_manager"] %}
+        <form method="POST" action="{{ url_for('delete_contact', contact_id=contact.id) }}" onsubmit="return confirm('Delete this contact? This cannot be undone.');" class="d-inline">
+          <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+        </form>
+        {% endif %}
+      </td>
     </tr>
     {% else %}
-    <tr><td colspan="5" class="text-center text-muted">No contacts yet — add your first one.</td></tr>
+    <tr><td colspan="6" class="text-center text-muted">No contacts yet — add your first one.</td></tr>
     {% endfor %}
   </tbody>
 </table>

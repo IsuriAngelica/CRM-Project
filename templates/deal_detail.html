@@ -9,7 +9,12 @@
       Close date: {{ deal.close_date.strftime("%d %b %Y") if deal.close_date else "-" }}
     </p>
   </div>
-  <a href="{{ url_for('edit_deal', deal_id=deal.id) }}" class="btn btn-outline-secondary">Edit deal</a>
+  <div class="text-nowrap">
+    <a href="{{ url_for('edit_deal', deal_id=deal.id) }}" class="btn btn-outline-secondary">Edit deal</a>
+    <form method="POST" action="{{ url_for('delete_deal', deal_id=deal.id) }}" onsubmit="return confirm('Delete this deal? This cannot be undone.');" class="d-inline">
+      <button type="submit" class="btn btn-outline-danger">Delete</button>
+    </form>
+  </div>
 </div>
 
 <hr>

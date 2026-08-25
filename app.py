@@ -55,7 +55,7 @@ def role_required(*allowed_roles):
 
 @app.errorhandler(403)
 def forbidden(e):
-    return render_template("403.html"), 403 if False else ("<h3>🚫 Access denied</h3><p>You don't have permission to view this page.</p>", 403)
+    return "<h3>🚫 Access denied</h3><p>You don't have permission to do that.</p>", 403
 
 
 @app.route("/")
@@ -237,6 +237,24 @@ def add_company_activity(company_id):
     return redirect(url_for("company_detail", company_id=company_id))
 
 
+@app.route("/companies/<int:company_id>/delete", methods=["POST"])
+@login_required
+@role_required("admin", "sales_manager")
+def delete_company(company_id):
+    company = models.Company.query.get_or_404(company_id)
+    contact_count = models.Contact.query.filter_by(company_id=company.id).count()
+    lead_count = models.Lead.query.filter_by(company_id=company.id).count()
+    deal_count = models.Deal.query.filter_by(company_id=company.id).count()
+    if contact_count > 0 or lead_count > 0 or deal_count > 0:
+        flash(f'Cannot delete "{company.name}" — it still has {contact_count} contact(s), {lead_count} lead(s), and {deal_count} deal(s) linked to it. Remove or reassign them first.')
+        return redirect(url_for("companies"))
+    models.Activity.query.filter_by(related_type="Company", related_id=company.id).delete()
+    db.session.delete(company)
+    db.session.commit()
+    flash(f'"{company.name}" was deleted.')
+    return redirect(url_for("companies"))
+
+
 @app.route("/contacts")
 @login_required
 def contacts():
@@ -252,6 +270,7 @@ def add_contact():
         contact = models.Contact(
             company_id=request.form.get("company_id"),
             name=request.form.get("name"),
+            role_title=request.form.get("role_title"),
             email=request.form.get("email"),
             phone=request.form.get("phone"),
         )
@@ -269,6 +288,7 @@ def edit_contact(contact_id):
     if request.method == "POST":
         contact.company_id = request.form.get("company_id")
         contact.name = request.form.get("name")
+        contact.role_title = request.form.get("role_title")
         contact.email = request.form.get("email")
         contact.phone = request.form.get("phone")
         db.session.commit()
@@ -302,6 +322,22 @@ def add_contact_activity(contact_id):
     db.session.add(activity)
     db.session.commit()
     return redirect(url_for("contact_detail", contact_id=contact_id))
+
+
+@app.route("/contacts/<int:contact_id>/delete", methods=["POST"])
+@login_required
+@role_required("admin", "sales_manager")
+def delete_contact(contact_id):
+    contact = models.Contact.query.get_or_404(contact_id)
+    deal_count = models.Deal.query.filter_by(contact_id=contact.id).count()
+    if deal_count > 0:
+        flash(f'Cannot delete "{contact.name}" — {deal_count} deal(s) still list them as the primary contact. Update those deals first.')
+        return redirect(url_for("contacts"))
+    models.Activity.query.filter_by(related_type="Contact", related_id=contact.id).delete()
+    db.session.delete(contact)
+    db.session.commit()
+    flash(f'"{contact.name}" was deleted.')
+    return redirect(url_for("contacts"))
 
 
 @app.route("/leads")
@@ -378,6 +414,19 @@ def add_lead_activity(lead_id):
     db.session.add(activity)
     db.session.commit()
     return redirect(url_for("lead_detail", lead_id=lead_id))
+
+
+@app.route("/leads/<int:lead_id>/delete", methods=["POST"])
+@login_required
+def delete_lead(lead_id):
+    lead = models.Lead.query.get_or_404(lead_id)
+    if current_user.role == "account_executive" and lead.assigned_rep_id != current_user.id:
+        abort(403)
+    models.Activity.query.filter_by(related_type="Lead", related_id=lead.id).delete()
+    db.session.delete(lead)
+    db.session.commit()
+    flash("Lead was deleted.")
+    return redirect(url_for("leads"))
 
 
 @app.route("/deals")
@@ -472,6 +521,19 @@ def add_deal_activity(deal_id):
     db.session.add(activity)
     db.session.commit()
     return redirect(url_for("deal_detail", deal_id=deal_id))
+
+
+@app.route("/deals/<int:deal_id>/delete", methods=["POST"])
+@login_required
+def delete_deal(deal_id):
+    deal = models.Deal.query.get_or_404(deal_id)
+    if current_user.role == "account_executive" and deal.owner_id != current_user.id:
+        abort(403)
+    models.Activity.query.filter_by(related_type="Deal", related_id=deal.id).delete()
+    db.session.delete(deal)
+    db.session.commit()
+    flash("Deal was deleted.")
+    return redirect(url_for("deals"))
 
 
 @app.route("/pipeline")

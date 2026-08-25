@@ -8,7 +8,12 @@
       Assigned to: {{ lead.assigned_rep.name if lead.assigned_rep else "Unassigned" }}
     </p>
   </div>
-  <a href="{{ url_for('edit_lead', lead_id=lead.id) }}" class="btn btn-outline-secondary">Edit lead</a>
+  <div class="text-nowrap">
+    <a href="{{ url_for('edit_lead', lead_id=lead.id) }}" class="btn btn-outline-secondary">Edit lead</a>
+    <form method="POST" action="{{ url_for('delete_lead', lead_id=lead.id) }}" onsubmit="return confirm('Delete this lead? This cannot be undone.');" class="d-inline">
+      <button type="submit" class="btn btn-outline-danger">Delete</button>
+    </form>
+  </div>
 </div>
 
 <hr>

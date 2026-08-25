@@ -18,6 +18,10 @@
     <input type="text" name="name" class="form-control" value="{{ contact.name if contact else '' }}" required>
   </div>
   <div class="mb-3">
+    <label class="form-label">Role at company</label>
+    <input type="text" name="role_title" class="form-control" placeholder="e.g. Founder, CEO, Marketing Manager" value="{{ contact.role_title if contact else '' }}">
+  </div>
+  <div class="mb-3">
     <label class="form-label">Email</label>
     <input type="email" name="email" class="form-control" value="{{ contact.email if contact else '' }}">
   </div>
