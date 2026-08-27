@@ -142,6 +142,11 @@ def reset_password(token):
             return redirect(url_for("reset_password", token=token))
 
         user = reset_token.user
+
+        if user.check_password(new_password):
+            flash("Your new password must be different from your current password.")
+            return redirect(url_for("reset_password", token=token))
+
         user.set_password(new_password)
         user.must_change_password = False
         reset_token.used = True
@@ -175,6 +180,10 @@ def change_password():
 
         if new_password != confirm_password:
             flash("New password and confirmation do not match.")
+            return redirect(url_for("change_password"))
+
+        if current_user.check_password(new_password):
+            flash("Your new password must be different from your current password.")
             return redirect(url_for("change_password"))
 
         current_user.set_password(new_password)
@@ -670,6 +679,34 @@ def edit_user(user_id):
         db.session.commit()
         return redirect(url_for("users"))
     return render_template("user_form.html", user=user)
+
+
+@app.route("/users/<int:user_id>/delete", methods=["POST"])
+@login_required
+@role_required("admin", "sales_manager")
+def delete_user(user_id):
+    user = models.User.query.get_or_404(user_id)
+
+    if user.id == current_user.id:
+        flash("You cannot delete your own account.")
+        return redirect(url_for("users"))
+
+    if user.role == "admin":
+        admin_count = models.User.query.filter_by(role="admin").count()
+        if admin_count <= 1:
+            flash("Cannot delete the last remaining Admin account.")
+            return redirect(url_for("users"))
+
+    deal_count = models.Deal.query.filter_by(owner_id=user.id).count()
+    lead_count = models.Lead.query.filter_by(assigned_rep_id=user.id).count()
+    if deal_count > 0 or lead_count > 0:
+        flash(f'Cannot delete "{user.name}" — they still own {deal_count} deal(s) and are assigned {lead_count} lead(s). Reassign these first.')
+        return redirect(url_for("users"))
+
+    db.session.delete(user)
+    db.session.commit()
+    flash(f'"{user.name}" was deleted.')
+    return redirect(url_for("users"))
 
 
 if __name__ == "__main__":
