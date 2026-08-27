@@ -35,7 +35,7 @@ import models  # noqa: E402
 
 @login_manager.user_loader
 def load_user(user_id):
-    return models.User.query.get(int(user_id))
+    return db.session.get(models.User, int(user_id))
 
 
 def get_stage_names():
@@ -53,9 +53,17 @@ def role_required(*allowed_roles):
     return decorator
 
 
+@app.before_request
+def require_password_change():
+    if current_user.is_authenticated and getattr(current_user, "must_change_password", False):
+        allowed = {"change_password", "logout", "static"}
+        if request.endpoint not in allowed:
+            return redirect(url_for("change_password"))
+
+
 @app.errorhandler(403)
 def forbidden(e):
-    return "<h3>🚫 Access denied</h3><p>You don't have permission to do that.</p>", 403
+    return render_template("403.html"), 403
 
 
 @app.route("/")
@@ -73,6 +81,8 @@ def login():
         user = models.User.query.filter_by(email=email).first()
         if user and user.check_password(password):
             login_user(user)
+            if user.must_change_password:
+                return redirect(url_for("change_password"))
             return redirect(url_for("dashboard"))
         flash("Invalid email or password.")
     return render_template("login.html")
@@ -133,6 +143,7 @@ def reset_password(token):
 
         user = reset_token.user
         user.set_password(new_password)
+        user.must_change_password = False
         reset_token.used = True
         db.session.commit()
 
@@ -151,25 +162,28 @@ def dashboard():
 @app.route("/change-password", methods=["GET", "POST"])
 @login_required
 def change_password():
+    forced = current_user.must_change_password
     if request.method == "POST":
-        current_password = request.form.get("current_password")
         new_password = request.form.get("new_password")
         confirm_password = request.form.get("confirm_password")
 
-        if not current_user.check_password(current_password):
-            flash("Your current password is incorrect.")
-            return redirect(url_for("change_password"))
+        if not forced:
+            current_password = request.form.get("current_password")
+            if not current_user.check_password(current_password):
+                flash("Your current password is incorrect.")
+                return redirect(url_for("change_password"))
 
         if new_password != confirm_password:
             flash("New password and confirmation do not match.")
             return redirect(url_for("change_password"))
 
         current_user.set_password(new_password)
+        current_user.must_change_password = False
         db.session.commit()
         flash("Password updated successfully.")
         return redirect(url_for("dashboard"))
 
-    return render_template("change_password.html")
+    return render_template("change_password.html", forced=forced)
 
 
 @app.route("/companies")
@@ -404,7 +418,9 @@ def lead_detail(lead_id):
 @app.route("/leads/<int:lead_id>/activities/add", methods=["POST"])
 @login_required
 def add_lead_activity(lead_id):
-    models.Lead.query.get_or_404(lead_id)
+    lead = models.Lead.query.get_or_404(lead_id)
+    if current_user.role == "account_executive" and lead.assigned_rep_id != current_user.id:
+        abort(403)
     activity = models.Activity(
         related_type="Lead",
         related_id=lead_id,
@@ -511,7 +527,9 @@ def deal_detail(deal_id):
 @app.route("/deals/<int:deal_id>/activities/add", methods=["POST"])
 @login_required
 def add_deal_activity(deal_id):
-    models.Deal.query.get_or_404(deal_id)
+    deal = models.Deal.query.get_or_404(deal_id)
+    if current_user.role == "account_executive" and deal.owner_id != current_user.id:
+        abort(403)
     activity = models.Activity(
         related_type="Deal",
         related_id=deal_id,
@@ -582,11 +600,16 @@ def manage_stages():
 @role_required("admin", "sales_manager")
 def add_stage():
     name = (request.form.get("name") or "").strip().lower()
-    position = request.form.get("position") or 0
+    position_raw = request.form.get("position") or "0"
+    try:
+        position = int(position_raw)
+    except ValueError:
+        flash("Position must be a number.")
+        return redirect(url_for("manage_stages"))
     if name:
         existing = models.Stage.query.filter_by(name=name).first()
         if not existing:
-            db.session.add(models.Stage(name=name, position=int(position)))
+            db.session.add(models.Stage(name=name, position=position))
             db.session.commit()
     return redirect(url_for("manage_stages"))
 
@@ -626,6 +649,7 @@ def add_user():
             name=request.form.get("name"),
             email=request.form.get("email"),
             role=request.form.get("role"),
+            must_change_password=True,
         )
         new_user.set_password(request.form.get("password"))
         db.session.add(new_user)
@@ -643,9 +667,6 @@ def edit_user(user_id):
         user.name = request.form.get("name")
         user.email = request.form.get("email")
         user.role = request.form.get("role")
-        new_password = request.form.get("password")
-        if new_password:
-            user.set_password(new_password)
         db.session.commit()
         return redirect(url_for("users"))
     return render_template("user_form.html", user=user)
