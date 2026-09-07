@@ -7,20 +7,16 @@
     <select name="company_id" class="form-select" required>
       <option value="">-- Select a company --</option>
       {% for company in companies %}
-        <option value="{{ company.id }}" {% if deal and deal.company_id == company.id %}selected{% endif %}>
-          {{ company.name }}
-        </option>
+        <option value="{{ company.id }}" {% if deal and deal.company_id == company.id %}selected{% endif %}>{{ company.name }}</option>
       {% endfor %}
     </select>
   </div>
   <div class="mb-3">
-    <label class="form-label">Primary contact (optional)</label>
+    <label class="form-label">Primary contact</label>
     <select name="contact_id" class="form-select">
       <option value="">-- None --</option>
       {% for contact in contacts %}
-        <option value="{{ contact.id }}" {% if deal and deal.contact_id == contact.id %}selected{% endif %}>
-          {{ contact.name }} ({{ contact.company.name }})
-        </option>
+        <option value="{{ contact.id }}" {% if deal and deal.contact_id == contact.id %}selected{% endif %}>{{ contact.name }}</option>
       {% endfor %}
     </select>
   </div>
@@ -29,9 +25,7 @@
     <select name="owner_id" class="form-select">
       <option value="">-- Unassigned --</option>
       {% for user in users %}
-        <option value="{{ user.id }}" {% if deal and deal.owner_id == user.id %}selected{% endif %}>
-          {{ user.name }}
-        </option>
+        <option value="{{ user.id }}" {% if deal and deal.owner_id == user.id %}selected{% endif %}>{{ user.name }}</option>
       {% endfor %}
     </select>
   </div>
@@ -44,20 +38,25 @@
     </select>
   </div>
   <div class="mb-3">
-    <label class="form-label">Value (LKR)</label>
-    <input type="number" step="0.01" name="value" class="form-control" value="{{ deal.value if deal else '' }}">
+    <label class="form-label">Value</label>
+    <input type="number" name="value" class="form-control" min="0" max="9999999999.99" step="0.01"
+           value="{{ deal.value if deal and deal.value is not none else '' }}">
+    <div class="form-text">Must be zero or more, up to 9,999,999,999.99.</div>
   </div>
   <div class="mb-3">
-    <label class="form-label">Expected close date</label>
-    <input type="date" name="close_date" class="form-control" value="{{ deal.close_date if deal else '' }}">
+    <label class="form-label">Budget</label>
+    <input type="number" name="budget" class="form-control" min="0" max="9999999999.99" step="0.01"
+           value="{{ deal.budget if deal and deal.budget is not none else '' }}">
+    <div class="form-text">Must be zero or more, up to 9,999,999,999.99.</div>
   </div>
   <div class="mb-3">
-    <label class="form-label">Budget (LKR)</label>
-    <input type="number" step="0.01" name="budget" class="form-control" value="{{ deal.budget if deal else '' }}">
+    <label class="form-label">Close date</label>
+    <input type="date" name="close_date" class="form-control"
+           value="{{ deal.close_date.strftime('%Y-%m-%d') if deal and deal.close_date else '' }}">
   </div>
   <div class="mb-3">
-    <label class="form-label">Agreed requirements</label>
-    <textarea name="requirements" class="form-control" rows="3">{{ deal.requirements if deal else '' }}</textarea>
+    <label class="form-label">Requirements</label>
+    <textarea name="requirements" class="form-control" rows="4">{{ deal.requirements if deal and deal.requirements else '' }}</textarea>
   </div>
   <button type="submit" class="btn btn-dark">Save deal</button>
   <a href="{{ url_for('deals') }}" class="btn btn-outline-secondary">Cancel</a>

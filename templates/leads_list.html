@@ -20,7 +20,10 @@
     <tr>
       <td><a href="{{ url_for('lead_detail', lead_id=lead.id) }}">{{ lead.company.name if lead.company else "Lead #" ~ lead.id }}</a></td>
       <td><span class="badge bg-secondary">{{ lead.source or "-" }}</span></td>
-      <td><span class="badge bg-info text-dark">{{ lead.status }}</span></td>
+      <td>
+        {% set status_colors = {"new": "bg-secondary", "contacted": "bg-info text-dark", "qualified": "bg-success", "lost": "bg-danger"} %}
+        <span class="badge {{ status_colors.get(lead.status, 'bg-secondary') }}">{{ lead.status }}</span>
+      </td>
       <td>{{ lead.assigned_rep.name if lead.assigned_rep else "-" }}</td>
       <td>{{ lead.created_at.strftime("%d %b %Y") if lead.created_at else "-" }}</td>
       <td class="text-nowrap">

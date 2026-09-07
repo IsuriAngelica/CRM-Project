@@ -42,6 +42,44 @@ def get_stage_names():
     return [s.name for s in models.Stage.query.order_by(models.Stage.position).all()]
 
 
+MAX_MONEY = 9999999999.99  # matches db.Numeric(12, 2)
+
+STAGE_PALETTE = [
+    "bg-secondary", "bg-info text-dark", "bg-primary",
+    "bg-warning text-dark", "bg-success", "bg-danger", "bg-dark",
+]
+
+
+def parse_money(raw, field_label):
+    """Return (value, error). Value is None when the field was left blank."""
+    if raw is None or str(raw).strip() == "":
+        return None, None
+    try:
+        amount = float(raw)
+    except ValueError:
+        return None, f"{field_label} must be a number."
+    if amount < 0:
+        return None, f"{field_label} cannot be negative."
+    if amount > MAX_MONEY:
+        return None, f"{field_label} cannot be greater than {MAX_MONEY:,.2f}."
+    return round(amount, 2), None
+
+
+@app.context_processor
+def inject_stage_colors():
+    colors = {}
+    try:
+        for i, name in enumerate(get_stage_names()):
+            colors[name] = STAGE_PALETTE[i % len(STAGE_PALETTE)]
+    except Exception:
+        pass
+
+    def stage_color(name):
+        return colors.get(name, "bg-secondary")
+
+    return dict(stage_color=stage_color)
+
+
 def role_required(*allowed_roles):
     def decorator(f):
         @wraps(f)
@@ -152,7 +190,7 @@ def reset_password(token):
         reset_token.used = True
         db.session.commit()
 
-        flash("Your password has been reset. Please sign in.")
+        flash("Your password has been reset. Please sign in.", "success")
         return redirect(url_for("login"))
 
     return render_template("reset_password.html", token=token)
@@ -189,7 +227,7 @@ def change_password():
         current_user.set_password(new_password)
         current_user.must_change_password = False
         db.session.commit()
-        flash("Password updated successfully.")
+        flash("Password updated successfully.", "success")
         return redirect(url_for("dashboard"))
 
     return render_template("change_password.html", forced=forced)
@@ -206,14 +244,22 @@ def companies():
 @login_required
 def add_company():
     if request.method == "POST":
+        name = (request.form.get("name") or "").strip()
+        existing = models.Company.query.filter(
+            db.func.lower(models.Company.name) == name.lower()
+        ).first()
+        if existing:
+            flash(f'A company named "{existing.name}" already exists.')
+            return redirect(url_for("add_company"))
         company = models.Company(
-            name=request.form.get("name"),
+            name=name,
             industry=request.form.get("industry"),
             phone=request.form.get("phone"),
             address=request.form.get("address"),
         )
         db.session.add(company)
         db.session.commit()
+        flash(f'"{company.name}" was created.', "success")
         return redirect(url_for("companies"))
     return render_template("company_form.html")
 
@@ -223,11 +269,20 @@ def add_company():
 def edit_company(company_id):
     company = models.Company.query.get_or_404(company_id)
     if request.method == "POST":
-        company.name = request.form.get("name")
+        name = (request.form.get("name") or "").strip()
+        clash = models.Company.query.filter(
+            db.func.lower(models.Company.name) == name.lower(),
+            models.Company.id != company.id,
+        ).first()
+        if clash:
+            flash(f'Another company named "{clash.name}" already exists.')
+            return redirect(url_for("edit_company", company_id=company.id))
+        company.name = name
         company.industry = request.form.get("industry")
         company.phone = request.form.get("phone")
         company.address = request.form.get("address")
         db.session.commit()
+        flash(f'"{company.name}" was updated.', "success")
         return redirect(url_for("companies"))
     return render_template("company_form.html", company=company)
 
@@ -274,7 +329,7 @@ def delete_company(company_id):
     models.Activity.query.filter_by(related_type="Company", related_id=company.id).delete()
     db.session.delete(company)
     db.session.commit()
-    flash(f'"{company.name}" was deleted.')
+    flash(f'"{company.name}" was deleted.', "success")
     return redirect(url_for("companies"))
 
 
@@ -299,6 +354,7 @@ def add_contact():
         )
         db.session.add(contact)
         db.session.commit()
+        flash(f'"{contact.name}" was created.', "success")
         return redirect(url_for("contacts"))
     return render_template("contact_form.html", companies=all_companies)
 
@@ -315,6 +371,7 @@ def edit_contact(contact_id):
         contact.email = request.form.get("email")
         contact.phone = request.form.get("phone")
         db.session.commit()
+        flash(f'"{contact.name}" was updated.', "success")
         return redirect(url_for("contacts"))
     return render_template("contact_form.html", contact=contact, companies=all_companies)
 
@@ -359,7 +416,7 @@ def delete_contact(contact_id):
     models.Activity.query.filter_by(related_type="Contact", related_id=contact.id).delete()
     db.session.delete(contact)
     db.session.commit()
-    flash(f'"{contact.name}" was deleted.')
+    flash(f'"{contact.name}" was deleted.', "success")
     return redirect(url_for("contacts"))
 
 
@@ -387,6 +444,7 @@ def add_lead():
         )
         db.session.add(lead)
         db.session.commit()
+        flash("Lead was created.", "success")
         return redirect(url_for("leads"))
     return render_template("lead_form.html", companies=all_companies, users=all_users)
 
@@ -405,6 +463,7 @@ def edit_lead(lead_id):
         lead.source = request.form.get("source")
         lead.status = request.form.get("status")
         db.session.commit()
+        flash("Lead was updated.", "success")
         return redirect(url_for("leads"))
     return render_template("lead_form.html", lead=lead, companies=all_companies, users=all_users)
 
@@ -450,7 +509,7 @@ def delete_lead(lead_id):
     models.Activity.query.filter_by(related_type="Lead", related_id=lead.id).delete()
     db.session.delete(lead)
     db.session.commit()
-    flash("Lead was deleted.")
+    flash("Lead was deleted.", "success")
     return redirect(url_for("leads"))
 
 
@@ -472,18 +531,30 @@ def add_deal():
     all_users = models.User.query.order_by(models.User.name).all()
     if request.method == "POST":
         close_date_str = request.form.get("close_date")
+
+        value, err = parse_money(request.form.get("value"), "Deal value")
+        if err:
+            flash(err)
+            return redirect(url_for("add_deal"))
+
+        budget, err = parse_money(request.form.get("budget"), "Budget")
+        if err:
+            flash(err)
+            return redirect(url_for("add_deal"))
+
         deal = models.Deal(
             company_id=request.form.get("company_id"),
             contact_id=request.form.get("contact_id") or None,
             owner_id=request.form.get("owner_id") or None,
             stage=request.form.get("stage"),
-            value=request.form.get("value") or None,
+            value=value,
             close_date=datetime.strptime(close_date_str, "%Y-%m-%d").date() if close_date_str else None,
             requirements=request.form.get("requirements"),
-            budget=request.form.get("budget") or None,
+            budget=budget,
         )
         db.session.add(deal)
         db.session.commit()
+        flash("Deal was created.", "success")
         return redirect(url_for("deals"))
     return render_template(
         "deal_form.html", companies=all_companies, contacts=all_contacts,
@@ -502,15 +573,27 @@ def edit_deal(deal_id):
     all_users = models.User.query.order_by(models.User.name).all()
     if request.method == "POST":
         close_date_str = request.form.get("close_date")
+
+        new_value, err = parse_money(request.form.get("value"), "Deal value")
+        if err:
+            flash(err)
+            return redirect(url_for("edit_deal", deal_id=deal.id))
+
+        new_budget, err = parse_money(request.form.get("budget"), "Budget")
+        if err:
+            flash(err)
+            return redirect(url_for("edit_deal", deal_id=deal.id))
+
         deal.company_id = request.form.get("company_id")
         deal.contact_id = request.form.get("contact_id") or None
         deal.owner_id = request.form.get("owner_id") or None
         deal.stage = request.form.get("stage")
-        deal.value = request.form.get("value") or None
+        deal.value = new_value
         deal.close_date = datetime.strptime(close_date_str, "%Y-%m-%d").date() if close_date_str else None
         deal.requirements = request.form.get("requirements")
-        deal.budget = request.form.get("budget") or None
+        deal.budget = new_budget
         db.session.commit()
+        flash("Deal was updated.", "success")
         return redirect(url_for("deals"))
     return render_template(
         "deal_form.html", deal=deal, companies=all_companies, contacts=all_contacts,
@@ -559,7 +642,7 @@ def delete_deal(deal_id):
     models.Activity.query.filter_by(related_type="Deal", related_id=deal.id).delete()
     db.session.delete(deal)
     db.session.commit()
-    flash("Deal was deleted.")
+    flash("Deal was deleted.", "success")
     return redirect(url_for("deals"))
 
 
@@ -615,11 +698,15 @@ def add_stage():
     except ValueError:
         flash("Position must be a number.")
         return redirect(url_for("manage_stages"))
-    if name:
-        existing = models.Stage.query.filter_by(name=name).first()
-        if not existing:
-            db.session.add(models.Stage(name=name, position=position))
-            db.session.commit()
+    if not name:
+        flash("Stage name cannot be blank.")
+        return redirect(url_for("manage_stages"))
+    if models.Stage.query.filter_by(name=name).first():
+        flash(f'A stage named "{name}" already exists.')
+        return redirect(url_for("manage_stages"))
+    db.session.add(models.Stage(name=name, position=position))
+    db.session.commit()
+    flash(f'Stage "{name}" was added.', "success")
     return redirect(url_for("manage_stages"))
 
 
@@ -634,6 +721,7 @@ def delete_stage(stage_id):
         return redirect(url_for("manage_stages"))
     db.session.delete(stage)
     db.session.commit()
+    flash(f'Stage "{stage.name}" was deleted.', "success")
     return redirect(url_for("manage_stages"))
 
 
@@ -663,6 +751,7 @@ def add_user():
         new_user.set_password(request.form.get("password"))
         db.session.add(new_user)
         db.session.commit()
+        flash(f'"{new_user.name}" was created.', "success")
         return redirect(url_for("users"))
     return render_template("user_form.html")
 
@@ -677,6 +766,7 @@ def edit_user(user_id):
         user.email = request.form.get("email")
         user.role = request.form.get("role")
         db.session.commit()
+        flash(f'"{user.name}" was updated.', "success")
         return redirect(url_for("users"))
     return render_template("user_form.html", user=user)
 
@@ -705,7 +795,7 @@ def delete_user(user_id):
 
     db.session.delete(user)
     db.session.commit()
-    flash(f'"{user.name}" was deleted.')
+    flash(f'"{user.name}" was deleted.', "success")
     return redirect(url_for("users"))
 
 

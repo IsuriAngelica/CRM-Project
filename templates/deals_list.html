@@ -22,8 +22,8 @@
       <td><a href="{{ url_for('deal_detail', deal_id=deal.id) }}">{{ deal.company.name }}</a></td>
       <td>{{ deal.primary_contact.name if deal.primary_contact else "-" }}</td>
       <td>{{ deal.owner.name if deal.owner else "-" }}</td>
-      <td><span class="badge bg-primary">{{ deal.stage }}</span></td>
-      <td>{{ "%.2f"|format(deal.value) if deal.value else "-" }}</td>
+      <td><span class="badge {{ stage_color(deal.stage) }}">{{ deal.stage }}</span></td>
+      <td>{{ "%.2f"|format(deal.value) if deal.value is not none else "-" }}</td>
       <td>{{ deal.close_date.strftime("%d %b %Y") if deal.close_date else "-" }}</td>
       <td class="text-nowrap">
         <a href="{{ url_for('edit_deal', deal_id=deal.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>

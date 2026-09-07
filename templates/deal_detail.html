@@ -2,12 +2,14 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
-    <h2>{{ deal.company.name }} — {{ deal.stage|capitalize }}</h2>
-    <p class="text-muted mb-0">
-      Value: {{ "%.2f"|format(deal.value) if deal.value else "-" }} &middot;
+    <h2>{{ deal.company.name }} <span class="badge {{ stage_color(deal.stage) }} align-middle">{{ deal.stage|capitalize }}</span></h2>
+    <p class="text-muted mb-1">
+      Value: {{ "%.2f"|format(deal.value) if deal.value is not none else "-" }} &middot;
+      Budget: {{ "%.2f"|format(deal.budget) if deal.budget is not none else "-" }} &middot;
       Owner: {{ deal.owner.name if deal.owner else "-" }} &middot;
       Close date: {{ deal.close_date.strftime("%d %b %Y") if deal.close_date else "-" }}
     </p>
+    <p class="mb-0"><strong>Requirements:</strong> {{ deal.requirements or "-" }}</p>
   </div>
   <div class="text-nowrap">
     <a href="{{ url_for('edit_deal', deal_id=deal.id) }}" class="btn btn-outline-secondary">Edit deal</a>
