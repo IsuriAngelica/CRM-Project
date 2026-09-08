@@ -117,11 +117,30 @@ def login():
         email = request.form.get("email")
         password = request.form.get("password")
         user = models.User.query.filter_by(email=email).first()
+
+        # Refuse straight away if this account is currently locked
+        if user and user.is_locked():
+            seconds_left = (user.locked_until - datetime.now()).total_seconds()
+            minutes_left = int(seconds_left // 60) + 1
+            flash(f"This account is locked after too many failed attempts. Try again in {minutes_left} minute(s).")
+            return render_template("login.html")
+
         if user and user.check_password(password):
+            user.reset_failed_logins()
+            db.session.commit()
             login_user(user)
             if user.must_change_password:
                 return redirect(url_for("change_password"))
             return redirect(url_for("dashboard"))
+
+        # Wrong password on a real account: count it
+        if user:
+            user.register_failed_login()
+            db.session.commit()
+            if user.is_locked():
+                flash("Too many failed attempts. This account is locked for 15 minutes.")
+                return render_template("login.html")
+
         flash("Invalid email or password.")
     return render_template("login.html")
 
@@ -187,6 +206,7 @@ def reset_password(token):
 
         user.set_password(new_password)
         user.must_change_password = False
+        user.reset_failed_logins()
         reset_token.used = True
         db.session.commit()
 
@@ -769,6 +789,17 @@ def edit_user(user_id):
         flash(f'"{user.name}" was updated.', "success")
         return redirect(url_for("users"))
     return render_template("user_form.html", user=user)
+
+
+@app.route("/users/<int:user_id>/unlock", methods=["POST"])
+@login_required
+@role_required("admin", "sales_manager")
+def unlock_user(user_id):
+    user = models.User.query.get_or_404(user_id)
+    user.reset_failed_logins()
+    db.session.commit()
+    flash(f'"{user.name}" has been unlocked.', "success")
+    return redirect(url_for("users"))
 
 
 @app.route("/users/<int:user_id>/delete", methods=["POST"])
