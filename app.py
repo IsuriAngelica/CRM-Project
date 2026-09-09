@@ -573,6 +573,7 @@ def delete_lead(lead_id):
     if current_user.role == "account_executive" and lead.assigned_rep_id != current_user.id:
         abort(403)
     models.Activity.query.filter_by(related_type="Lead", related_id=lead.id).delete()
+    models.Reminder.query.filter_by(lead_id=lead.id).delete()
     db.session.delete(lead)
     db.session.commit()
     flash("Lead was deleted.", "success")
@@ -713,6 +714,7 @@ def delete_deal(deal_id):
     if current_user.role == "account_executive" and deal.owner_id != current_user.id:
         abort(403)
     models.Activity.query.filter_by(related_type="Deal", related_id=deal.id).delete()
+    models.Reminder.query.filter_by(deal_id=deal.id).delete()
     db.session.delete(deal)
     db.session.commit()
     flash("Deal was deleted.", "success")
@@ -886,6 +888,10 @@ def delete_user(user_id):
     if deal_count > 0 or lead_count > 0:
         flash(f'Cannot delete "{user.name}" — they still own {deal_count} deal(s) and are assigned {lead_count} lead(s). Reassign these first.')
         return redirect(url_for("users"))
+
+    # Remove any password reset tokens belonging to this user first.
+    # These rows point at the user and cannot be left orphaned.
+    models.PasswordResetToken.query.filter_by(user_id=user.id).delete()
 
     db.session.delete(user)
     db.session.commit()
