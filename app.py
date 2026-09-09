@@ -49,6 +49,21 @@ STAGE_PALETTE = [
     "bg-warning text-dark", "bg-success", "bg-danger", "bg-dark",
 ]
 
+# ---------------------------------------------------------------------------
+# ROLE PERMISSION GROUPS
+# ---------------------------------------------------------------------------
+# Full access to everything, including deleting records and managing users
+MANAGERS = ("admin", "sales_manager")
+
+# Can create and edit sales records (companies, contacts, leads, deals)
+SALES_EDITORS = ("admin", "sales_manager", "account_executive")
+
+# Can create and edit leads only
+LEAD_EDITORS = ("admin", "sales_manager", "account_executive", "marketing")
+
+# Read-only roles: can view records but cannot change anything
+READ_ONLY = ("delivery", "ceo")
+
 
 def parse_money(raw, field_label):
     """Return (value, error). Value is None when the field was left blank."""
@@ -78,6 +93,18 @@ def inject_stage_colors():
         return colors.get(name, "bg-secondary")
 
     return dict(stage_color=stage_color)
+
+
+@app.context_processor
+def inject_permissions():
+    """Make permission checks available inside templates so we can hide buttons."""
+    role = getattr(current_user, "role", None)
+    return dict(
+        can_manage=role in MANAGERS,
+        can_edit_sales=role in SALES_EDITORS,
+        can_edit_leads=role in LEAD_EDITORS,
+        is_read_only=role in READ_ONLY,
+    )
 
 
 def role_required(*allowed_roles):
@@ -253,6 +280,9 @@ def change_password():
     return render_template("change_password.html", forced=forced)
 
 
+# ---------------------------------------------------------------------------
+# COMPANIES
+# ---------------------------------------------------------------------------
 @app.route("/companies")
 @login_required
 def companies():
@@ -262,6 +292,7 @@ def companies():
 
 @app.route("/companies/add", methods=["GET", "POST"])
 @login_required
+@role_required(*SALES_EDITORS)
 def add_company():
     if request.method == "POST":
         name = (request.form.get("name") or "").strip()
@@ -286,6 +317,7 @@ def add_company():
 
 @app.route("/companies/<int:company_id>/edit", methods=["GET", "POST"])
 @login_required
+@role_required(*SALES_EDITORS)
 def edit_company(company_id):
     company = models.Company.query.get_or_404(company_id)
     if request.method == "POST":
@@ -322,6 +354,7 @@ def company_detail(company_id):
 
 @app.route("/companies/<int:company_id>/activities/add", methods=["POST"])
 @login_required
+@role_required(*SALES_EDITORS)
 def add_company_activity(company_id):
     models.Company.query.get_or_404(company_id)
     activity = models.Activity(
@@ -337,7 +370,7 @@ def add_company_activity(company_id):
 
 @app.route("/companies/<int:company_id>/delete", methods=["POST"])
 @login_required
-@role_required("admin", "sales_manager")
+@role_required(*MANAGERS)
 def delete_company(company_id):
     company = models.Company.query.get_or_404(company_id)
     contact_count = models.Contact.query.filter_by(company_id=company.id).count()
@@ -353,6 +386,9 @@ def delete_company(company_id):
     return redirect(url_for("companies"))
 
 
+# ---------------------------------------------------------------------------
+# CONTACTS
+# ---------------------------------------------------------------------------
 @app.route("/contacts")
 @login_required
 def contacts():
@@ -362,6 +398,7 @@ def contacts():
 
 @app.route("/contacts/add", methods=["GET", "POST"])
 @login_required
+@role_required(*SALES_EDITORS)
 def add_contact():
     all_companies = models.Company.query.order_by(models.Company.name).all()
     if request.method == "POST":
@@ -381,6 +418,7 @@ def add_contact():
 
 @app.route("/contacts/<int:contact_id>/edit", methods=["GET", "POST"])
 @login_required
+@role_required(*SALES_EDITORS)
 def edit_contact(contact_id):
     contact = models.Contact.query.get_or_404(contact_id)
     all_companies = models.Company.query.order_by(models.Company.name).all()
@@ -411,6 +449,7 @@ def contact_detail(contact_id):
 
 @app.route("/contacts/<int:contact_id>/activities/add", methods=["POST"])
 @login_required
+@role_required(*SALES_EDITORS)
 def add_contact_activity(contact_id):
     models.Contact.query.get_or_404(contact_id)
     activity = models.Activity(
@@ -426,7 +465,7 @@ def add_contact_activity(contact_id):
 
 @app.route("/contacts/<int:contact_id>/delete", methods=["POST"])
 @login_required
-@role_required("admin", "sales_manager")
+@role_required(*MANAGERS)
 def delete_contact(contact_id):
     contact = models.Contact.query.get_or_404(contact_id)
     deal_count = models.Deal.query.filter_by(contact_id=contact.id).count()
@@ -440,6 +479,9 @@ def delete_contact(contact_id):
     return redirect(url_for("contacts"))
 
 
+# ---------------------------------------------------------------------------
+# LEADS  (Marketing can edit these)
+# ---------------------------------------------------------------------------
 @app.route("/leads")
 @login_required
 def leads():
@@ -452,6 +494,7 @@ def leads():
 
 @app.route("/leads/add", methods=["GET", "POST"])
 @login_required
+@role_required(*LEAD_EDITORS)
 def add_lead():
     all_companies = models.Company.query.order_by(models.Company.name).all()
     all_users = models.User.query.order_by(models.User.name).all()
@@ -471,6 +514,7 @@ def add_lead():
 
 @app.route("/leads/<int:lead_id>/edit", methods=["GET", "POST"])
 @login_required
+@role_required(*LEAD_EDITORS)
 def edit_lead(lead_id):
     lead = models.Lead.query.get_or_404(lead_id)
     if current_user.role == "account_executive" and lead.assigned_rep_id != current_user.id:
@@ -505,6 +549,7 @@ def lead_detail(lead_id):
 
 @app.route("/leads/<int:lead_id>/activities/add", methods=["POST"])
 @login_required
+@role_required(*LEAD_EDITORS)
 def add_lead_activity(lead_id):
     lead = models.Lead.query.get_or_404(lead_id)
     if current_user.role == "account_executive" and lead.assigned_rep_id != current_user.id:
@@ -522,6 +567,7 @@ def add_lead_activity(lead_id):
 
 @app.route("/leads/<int:lead_id>/delete", methods=["POST"])
 @login_required
+@role_required(*SALES_EDITORS)
 def delete_lead(lead_id):
     lead = models.Lead.query.get_or_404(lead_id)
     if current_user.role == "account_executive" and lead.assigned_rep_id != current_user.id:
@@ -533,6 +579,9 @@ def delete_lead(lead_id):
     return redirect(url_for("leads"))
 
 
+# ---------------------------------------------------------------------------
+# DEALS  (Marketing cannot touch these)
+# ---------------------------------------------------------------------------
 @app.route("/deals")
 @login_required
 def deals():
@@ -545,6 +594,7 @@ def deals():
 
 @app.route("/deals/add", methods=["GET", "POST"])
 @login_required
+@role_required(*SALES_EDITORS)
 def add_deal():
     all_companies = models.Company.query.order_by(models.Company.name).all()
     all_contacts = models.Contact.query.order_by(models.Contact.name).all()
@@ -584,6 +634,7 @@ def add_deal():
 
 @app.route("/deals/<int:deal_id>/edit", methods=["GET", "POST"])
 @login_required
+@role_required(*SALES_EDITORS)
 def edit_deal(deal_id):
     deal = models.Deal.query.get_or_404(deal_id)
     if current_user.role == "account_executive" and deal.owner_id != current_user.id:
@@ -638,6 +689,7 @@ def deal_detail(deal_id):
 
 @app.route("/deals/<int:deal_id>/activities/add", methods=["POST"])
 @login_required
+@role_required(*SALES_EDITORS)
 def add_deal_activity(deal_id):
     deal = models.Deal.query.get_or_404(deal_id)
     if current_user.role == "account_executive" and deal.owner_id != current_user.id:
@@ -655,6 +707,7 @@ def add_deal_activity(deal_id):
 
 @app.route("/deals/<int:deal_id>/delete", methods=["POST"])
 @login_required
+@role_required(*SALES_EDITORS)
 def delete_deal(deal_id):
     deal = models.Deal.query.get_or_404(deal_id)
     if current_user.role == "account_executive" and deal.owner_id != current_user.id:
@@ -666,6 +719,9 @@ def delete_deal(deal_id):
     return redirect(url_for("deals"))
 
 
+# ---------------------------------------------------------------------------
+# PIPELINE
+# ---------------------------------------------------------------------------
 @app.route("/pipeline")
 @login_required
 def pipeline():
@@ -683,6 +739,7 @@ def pipeline():
 
 @app.route("/deals/<int:deal_id>/update_stage", methods=["POST"])
 @login_required
+@role_required(*SALES_EDITORS)
 def update_deal_stage(deal_id):
     deal = models.Deal.query.get_or_404(deal_id)
     if current_user.role == "account_executive" and deal.owner_id != current_user.id:
@@ -696,9 +753,12 @@ def update_deal_stage(deal_id):
     return jsonify({"success": False}), 400
 
 
+# ---------------------------------------------------------------------------
+# STAGES  (managers only)
+# ---------------------------------------------------------------------------
 @app.route("/stages")
 @login_required
-@role_required("admin", "sales_manager")
+@role_required(*MANAGERS)
 def manage_stages():
     all_stages = models.Stage.query.order_by(models.Stage.position).all()
     deal_counts = {}
@@ -709,7 +769,7 @@ def manage_stages():
 
 @app.route("/stages/add", methods=["POST"])
 @login_required
-@role_required("admin", "sales_manager")
+@role_required(*MANAGERS)
 def add_stage():
     name = (request.form.get("name") or "").strip().lower()
     position_raw = request.form.get("position") or "0"
@@ -732,7 +792,7 @@ def add_stage():
 
 @app.route("/stages/<int:stage_id>/delete", methods=["POST"])
 @login_required
-@role_required("admin", "sales_manager")
+@role_required(*MANAGERS)
 def delete_stage(stage_id):
     stage = models.Stage.query.get_or_404(stage_id)
     deals_using_it = models.Deal.query.filter_by(stage=stage.name).count()
@@ -745,9 +805,12 @@ def delete_stage(stage_id):
     return redirect(url_for("manage_stages"))
 
 
+# ---------------------------------------------------------------------------
+# USERS  (managers only)
+# ---------------------------------------------------------------------------
 @app.route("/users")
 @login_required
-@role_required("admin", "sales_manager")
+@role_required(*MANAGERS)
 def users():
     all_users = models.User.query.order_by(models.User.name).all()
     return render_template("users_list.html", users=all_users)
@@ -755,7 +818,7 @@ def users():
 
 @app.route("/users/add", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "sales_manager")
+@role_required(*MANAGERS)
 def add_user():
     if request.method == "POST":
         existing = models.User.query.filter_by(email=request.form.get("email")).first()
@@ -778,7 +841,7 @@ def add_user():
 
 @app.route("/users/<int:user_id>/edit", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "sales_manager")
+@role_required(*MANAGERS)
 def edit_user(user_id):
     user = models.User.query.get_or_404(user_id)
     if request.method == "POST":
@@ -793,7 +856,7 @@ def edit_user(user_id):
 
 @app.route("/users/<int:user_id>/unlock", methods=["POST"])
 @login_required
-@role_required("admin", "sales_manager")
+@role_required(*MANAGERS)
 def unlock_user(user_id):
     user = models.User.query.get_or_404(user_id)
     user.reset_failed_logins()
@@ -804,7 +867,7 @@ def unlock_user(user_id):
 
 @app.route("/users/<int:user_id>/delete", methods=["POST"])
 @login_required
-@role_required("admin", "sales_manager")
+@role_required(*MANAGERS)
 def delete_user(user_id):
     user = models.User.query.get_or_404(user_id)
 

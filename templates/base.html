@@ -16,7 +16,7 @@
           <a href="{{ url_for('leads') }}" class="text-white text-decoration-none ms-3">Leads</a>
           <a href="{{ url_for('deals') }}" class="text-white text-decoration-none ms-3">Deals</a>
           <a href="{{ url_for('pipeline') }}" class="text-white text-decoration-none ms-3">Pipeline</a>
-          {% if current_user.role in ["admin", "sales_manager"] %}
+          {% if can_manage %}
             <a href="{{ url_for('manage_stages') }}" class="text-white text-decoration-none ms-3">Stages</a>
             <a href="{{ url_for('users') }}" class="text-white text-decoration-none ms-3">Users</a>
           {% endif %}
@@ -27,6 +27,9 @@
     </div>
   </nav>
   <div class="container">
+    {% if is_read_only %}
+      <div class="alert alert-info">You have read-only access. You can view records but cannot change them.</div>
+    {% endif %}
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}

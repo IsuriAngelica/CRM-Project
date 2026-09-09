@@ -2,7 +2,9 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h2>Deals</h2>
+  {% if can_edit_sales %}
   <a href="{{ url_for('add_deal') }}" class="btn btn-dark">+ Add deal</a>
+  {% endif %}
 </div>
 <table class="table table-bordered bg-white">
   <thead>
@@ -26,14 +28,16 @@
       <td>{{ "%.2f"|format(deal.value) if deal.value is not none else "-" }}</td>
       <td>{{ deal.close_date.strftime("%d %b %Y") if deal.close_date else "-" }}</td>
       <td class="text-nowrap">
+        {% if can_edit_sales %}
         <a href="{{ url_for('edit_deal', deal_id=deal.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
         <form method="POST" action="{{ url_for('delete_deal', deal_id=deal.id) }}" onsubmit="return confirm('Delete this deal? This cannot be undone.');" class="d-inline">
           <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
         </form>
+        {% endif %}
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="7" class="text-center text-muted">No deals yet — add your first one.</td></tr>
+    <tr><td colspan="7" class="text-center text-muted">No deals yet.</td></tr>
     {% endfor %}
   </tbody>
 </table>

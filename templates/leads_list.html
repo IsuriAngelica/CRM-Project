@@ -2,7 +2,9 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h2>Leads</h2>
+  {% if can_edit_leads %}
   <a href="{{ url_for('add_lead') }}" class="btn btn-dark">+ Add lead</a>
+  {% endif %}
 </div>
 <table class="table table-bordered bg-white">
   <thead>
@@ -27,14 +29,18 @@
       <td>{{ lead.assigned_rep.name if lead.assigned_rep else "-" }}</td>
       <td>{{ lead.created_at.strftime("%d %b %Y") if lead.created_at else "-" }}</td>
       <td class="text-nowrap">
+        {% if can_edit_leads %}
         <a href="{{ url_for('edit_lead', lead_id=lead.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+        {% endif %}
+        {% if can_edit_sales %}
         <form method="POST" action="{{ url_for('delete_lead', lead_id=lead.id) }}" onsubmit="return confirm('Delete this lead? This cannot be undone.');" class="d-inline">
           <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
         </form>
+        {% endif %}
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="6" class="text-center text-muted">No leads yet — add your first one.</td></tr>
+    <tr><td colspan="6" class="text-center text-muted">No leads yet.</td></tr>
     {% endfor %}
   </tbody>
 </table>
