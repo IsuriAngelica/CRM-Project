@@ -10,6 +10,10 @@
     <div class="container-fluid px-4">
       <span class="navbar-brand">CRM</span>
       {% if current_user.is_authenticated %}
+        <form method="GET" action="{{ url_for('search') }}" class="d-flex" style="max-width: 300px;">
+          <input type="search" name="q" class="form-control form-control-sm" placeholder="Search..." value="{{ request.args.get('q', '') }}">
+          <button type="submit" class="btn btn-sm btn-outline-light ms-2">Go</button>
+        </form>
         <div>
           <a href="{{ url_for('my_dashboard') }}" class="text-white text-decoration-none ms-3">My Dashboard</a>
           <a href="{{ url_for('companies') }}" class="text-white text-decoration-none ms-3">Companies</a>
@@ -18,6 +22,11 @@
           <a href="{{ url_for('deals') }}" class="text-white text-decoration-none ms-3">Deals</a>
           <a href="{{ url_for('pipeline') }}" class="text-white text-decoration-none ms-3">Pipeline</a>
           <a href="{{ url_for('reminders') }}" class="text-white text-decoration-none ms-3">Reminders</a>
+          <a href="{{ url_for('handoff') }}" class="text-white text-decoration-none ms-3">Handoff</a>
+          {% if can_view_leadership %}
+            <a href="{{ url_for('company_dashboard') }}" class="text-white text-decoration-none ms-3">Company View</a>
+            <a href="{{ url_for('monthly_report') }}" class="text-white text-decoration-none ms-3">Report</a>
+          {% endif %}
           {% if can_manage %}
             <a href="{{ url_for('manage_stages') }}" class="text-white text-decoration-none ms-3">Stages</a>
             <a href="{{ url_for('users') }}" class="text-white text-decoration-none ms-3">Users</a>

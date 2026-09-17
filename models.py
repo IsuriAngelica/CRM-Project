@@ -118,6 +118,11 @@ class Deal(db.Model):
     requirements = db.Column(db.Text)
     budget = db.Column(db.Numeric(12, 2))
 
+    # CRM-24: delivery build status
+    build_status = db.Column(db.String(50), default="not_started")
+    mismatch_flagged = db.Column(db.Boolean, default=False)
+    mismatch_note = db.Column(db.Text)
+
     owner = db.relationship("User", backref="deals", lazy=True)
 
 

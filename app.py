@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from functools import wraps
 from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, abort
 from flask_migrate import Migrate
@@ -49,6 +49,8 @@ STAGE_PALETTE = [
     "bg-warning text-dark", "bg-success", "bg-danger", "bg-dark",
 ]
 
+BUILD_STATUSES = ["not_started", "in_progress", "blocked", "delivered"]
+
 # ---------------------------------------------------------------------------
 # ROLE PERMISSION GROUPS
 # ---------------------------------------------------------------------------
@@ -56,6 +58,8 @@ MANAGERS = ("admin", "sales_manager")
 SALES_EDITORS = ("admin", "sales_manager", "account_executive")
 LEAD_EDITORS = ("admin", "sales_manager", "account_executive", "marketing")
 READ_ONLY = ("delivery", "ceo")
+LEADERSHIP = ("admin", "sales_manager", "ceo")
+DELIVERY_TEAM = ("admin", "sales_manager", "delivery")
 
 
 def parse_money(raw, field_label):
@@ -114,6 +118,8 @@ def inject_helpers():
         can_edit_sales=role in SALES_EDITORS,
         can_edit_leads=role in LEAD_EDITORS,
         is_read_only=role in READ_ONLY,
+        can_view_leadership=role in LEADERSHIP,
+        can_update_build=role in DELIVERY_TEAM,
     )
 
 
@@ -343,6 +349,121 @@ def my_dashboard():
 
 
 # ---------------------------------------------------------------------------
+# CRM-21: COMPANY DASHBOARD  (leadership view)
+# ---------------------------------------------------------------------------
+@app.route("/company-dashboard")
+@login_required
+@role_required(*LEADERSHIP)
+def company_dashboard():
+    all_deals = models.Deal.query.all()
+    all_leads = models.Lead.query.all()
+
+    stages = get_stage_names()
+    deals_by_stage = {s: [] for s in stages}
+    for d in all_deals:
+        if d.stage in deals_by_stage:
+            deals_by_stage[d.stage].append(d)
+
+    stage_values = {
+        s: sum(float(d.value) for d in deals_by_stage[s] if d.value is not None)
+        for s in stages
+    }
+
+    won = [d for d in all_deals if d.stage == "won"]
+    lost = [d for d in all_deals if d.stage == "lost"]
+    closed_total = len(won) + len(lost)
+    conversion = round((len(won) / closed_total) * 100, 1) if closed_total else 0.0
+
+    open_deals = [d for d in all_deals if d.stage not in ("won", "lost")]
+    pipeline_value = sum(float(d.value) for d in open_deals if d.value is not None)
+    won_value = sum(float(d.value) for d in won if d.value is not None)
+
+    leads_by_source = {}
+    for l in all_leads:
+        key = l.source or "Unspecified"
+        leads_by_source[key] = leads_by_source.get(key, 0) + 1
+
+    return render_template(
+        "company_dashboard.html",
+        stages=stages,
+        deals_by_stage=deals_by_stage,
+        stage_values=stage_values,
+        won=won,
+        lost=lost,
+        conversion=conversion,
+        pipeline_value=pipeline_value,
+        won_value=won_value,
+        total_deals=len(all_deals),
+        total_leads=len(all_leads),
+        leads_by_source=leads_by_source,
+    )
+
+
+# ---------------------------------------------------------------------------
+# CRM-22: MONTHLY REPORT
+# ---------------------------------------------------------------------------
+@app.route("/reports/monthly")
+@login_required
+@role_required(*LEADERSHIP)
+def monthly_report():
+    today = date.today()
+    try:
+        year = int(request.args.get("year", today.year))
+        month = int(request.args.get("month", today.month))
+    except ValueError:
+        year, month = today.year, today.month
+
+    if month < 1 or month > 12:
+        month = today.month
+
+    start = date(year, month, 1)
+    end = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+
+    closed_this_month = models.Deal.query.filter(
+        models.Deal.close_date >= start,
+        models.Deal.close_date < end,
+    ).all()
+
+    won = [d for d in closed_this_month if d.stage == "won"]
+    lost = [d for d in closed_this_month if d.stage == "lost"]
+
+    won_value = sum(float(d.value) for d in won if d.value is not None)
+    lost_value = sum(float(d.value) for d in lost if d.value is not None)
+    budget_total = sum(float(d.budget) for d in closed_this_month if d.budget is not None)
+
+    with_requirements = [d for d in closed_this_month if d.requirements and d.requirements.strip()]
+    without_requirements = [d for d in closed_this_month if not (d.requirements and d.requirements.strip())]
+
+    leads_this_month = models.Lead.query.filter(
+        models.Lead.created_at >= datetime(year, month, 1),
+        models.Lead.created_at < datetime(end.year, end.month, 1),
+    ).all()
+
+    leads_by_source = {}
+    for l in leads_this_month:
+        key = l.source or "Unspecified"
+        leads_by_source[key] = leads_by_source.get(key, 0) + 1
+
+    month_name = start.strftime("%B %Y")
+
+    return render_template(
+        "monthly_report.html",
+        month_name=month_name,
+        year=year,
+        month=month,
+        won=won,
+        lost=lost,
+        won_value=won_value,
+        lost_value=lost_value,
+        budget_total=budget_total,
+        with_requirements=with_requirements,
+        without_requirements=without_requirements,
+        leads_this_month=leads_this_month,
+        leads_by_source=leads_by_source,
+    )
+
+
+# ---------------------------------------------------------------------------
 # CRM-18: REMINDERS
 # ---------------------------------------------------------------------------
 @app.route("/reminders")
@@ -415,6 +536,94 @@ def delete_reminder(reminder_id):
     db.session.commit()
     flash("Reminder was deleted.", "success")
     return redirect(url_for("reminders"))
+
+
+# ---------------------------------------------------------------------------
+# CRM-23: DELIVERY HANDOFF VIEW
+# ---------------------------------------------------------------------------
+@app.route("/handoff")
+@login_required
+def handoff():
+    won_deals = models.Deal.query.filter_by(stage="won").order_by(models.Deal.close_date.desc()).all()
+    return render_template("handoff.html", deals=won_deals, build_statuses=BUILD_STATUSES)
+
+
+# ---------------------------------------------------------------------------
+# CRM-24: BUILD STATUS AND MISMATCH FLAG
+# ---------------------------------------------------------------------------
+@app.route("/deals/<int:deal_id>/build-status", methods=["POST"])
+@login_required
+@role_required(*DELIVERY_TEAM)
+def update_build_status(deal_id):
+    deal = models.Deal.query.get_or_404(deal_id)
+
+    new_status = request.form.get("build_status")
+    if new_status not in BUILD_STATUSES:
+        flash("That build status is not valid.")
+        return redirect(url_for("handoff"))
+
+    deal.build_status = new_status
+    deal.mismatch_flagged = bool(request.form.get("mismatch_flagged"))
+    deal.mismatch_note = (request.form.get("mismatch_note") or "").strip() or None
+    db.session.commit()
+
+    if deal.mismatch_flagged:
+        flash(f"Build status updated and a commitment mismatch was flagged to sales for {deal.company.name}.", "success")
+    else:
+        flash(f"Build status updated for {deal.company.name}.", "success")
+    return redirect(url_for("handoff"))
+
+
+# ---------------------------------------------------------------------------
+# CRM-25: SEARCH
+# ---------------------------------------------------------------------------
+@app.route("/search")
+@login_required
+def search():
+    q = (request.args.get("q") or "").strip()
+
+    companies_found = []
+    contacts_found = []
+    leads_found = []
+    deals_found = []
+
+    if q:
+        like = f"%{q}%"
+
+        companies_found = models.Company.query.filter(models.Company.name.ilike(like)).limit(20).all()
+
+        contacts_found = models.Contact.query.filter(
+            db.or_(
+                models.Contact.name.ilike(like),
+                models.Contact.email.ilike(like),
+            )
+        ).limit(20).all()
+
+        lead_query = models.Lead.query.join(
+            models.Company, models.Lead.company_id == models.Company.id
+        ).filter(models.Company.name.ilike(like))
+        if current_user.role == "account_executive":
+            lead_query = lead_query.filter(models.Lead.assigned_rep_id == current_user.id)
+        leads_found = lead_query.limit(20).all()
+
+        deal_query = models.Deal.query.join(
+            models.Company, models.Deal.company_id == models.Company.id
+        ).filter(models.Company.name.ilike(like))
+        if current_user.role == "account_executive":
+            deal_query = deal_query.filter(models.Deal.owner_id == current_user.id)
+        deals_found = deal_query.limit(20).all()
+
+    total = len(companies_found) + len(contacts_found) + len(leads_found) + len(deals_found)
+
+    return render_template(
+        "search_results.html",
+        q=q,
+        companies=companies_found,
+        contacts=contacts_found,
+        leads=leads_found,
+        deals=deals_found,
+        total=total,
+    )
 
 
 # ---------------------------------------------------------------------------

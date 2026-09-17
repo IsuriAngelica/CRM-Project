@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Company-wide Pipeline</h2>
+
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="card text-center"><div class="card-body">
+      <h3 class="text-primary">{{ "%.2f"|format(pipeline_value) }}</h3>
+      <div class="text-muted">Open pipeline value</div>
+    </div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center"><div class="card-body">
+      <h3 class="text-success">{{ "%.2f"|format(won_value) }}</h3>
+      <div class="text-muted">Won value</div>
+    </div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center"><div class="card-body">
+      <h3 class="text-info">{{ conversion }}%</h3>
+      <div class="text-muted">Conversion rate</div>
+    </div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center"><div class="card-body">
+      <h3>{{ total_deals }}</h3>
+      <div class="text-muted">Total deals</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-7">
+    <h5>Deals by stage</h5>
+    <table class="table table-bordered bg-white">
+      <thead><tr><th>Stage</th><th>Deals</th><th>Value</th></tr></thead>
+      <tbody>
+        {% for s in stages %}
+        <tr>
+          <td><span class="badge {{ stage_color(s) }}">{{ s }}</span></td>
+          <td>{{ deals_by_stage[s]|length }}</td>
+          <td>{{ "%.2f"|format(stage_values[s]) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="fw-bold">
+          <td>Won / Lost</td>
+          <td>{{ won|length }} won, {{ lost|length }} lost</td>
+          <td>&mdash;</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="col-md-5">
+    <h5>Leads by source ({{ total_leads }} total)</h5>
+    <table class="table table-bordered bg-white">
+      <thead><tr><th>Source</th><th>Count</th></tr></thead>
+      <tbody>
+        {% for source, count in leads_by_source.items() %}
+        <tr><td>{{ source }}</td><td>{{ count }}</td></tr>
+        {% else %}
+        <tr><td colspan="2" class="text-center text-muted">No leads yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

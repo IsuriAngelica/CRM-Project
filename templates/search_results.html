@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-3">Search results</h2>
+{% if q %}
+<p class="text-muted">{{ total }} result(s) for "{{ q }}"</p>
+{% else %}
+<div class="alert alert-info">Type something in the search box above to find records.</div>
+{% endif %}
+
+{% if companies %}
+<h5 class="mt-4">Companies ({{ companies|length }})</h5>
+<ul class="list-group mb-3">
+  {% for c in companies %}
+  <li class="list-group-item">
+    <a href="{{ url_for('company_detail', company_id=c.id) }}">{{ c.name }}</a>
+    <span class="text-muted small">{{ c.industry or "" }}</span>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if contacts %}
+<h5 class="mt-4">Contacts ({{ contacts|length }})</h5>
+<ul class="list-group mb-3">
+  {% for c in contacts %}
+  <li class="list-group-item">
+    <a href="{{ url_for('contact_detail', contact_id=c.id) }}">{{ c.name }}</a>
+    <span class="text-muted small">{{ c.role_title or "" }} at {{ c.company.name }} &middot; {{ c.email or "" }}</span>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if leads %}
+<h5 class="mt-4">Leads ({{ leads|length }})</h5>
+<ul class="list-group mb-3">
+  {% for l in leads %}
+  <li class="list-group-item">
+    <a href="{{ url_for('lead_detail', lead_id=l.id) }}">{{ l.company.name if l.company else "Lead #" ~ l.id }}</a>
+    <span class="badge bg-info text-dark">{{ l.status }}</span>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if deals %}
+<h5 class="mt-4">Deals ({{ deals|length }})</h5>
+<ul class="list-group mb-3">
+  {% for d in deals %}
+  <li class="list-group-item">
+    <a href="{{ url_for('deal_detail', deal_id=d.id) }}">{{ d.company.name }}</a>
+    <span class="badge {{ stage_color(d.stage) }}">{{ d.stage }}</span>
+    <span class="text-muted small">{{ "%.2f"|format(d.value) if d.value is not none else "" }}</span>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if q and total == 0 %}
+<div class="alert alert-warning">Nothing found for "{{ q }}".</div>
+{% endif %}
+{% endblock %}

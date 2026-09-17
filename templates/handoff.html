@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-3">Delivery Handoff</h2>
+<p class="text-muted">Won deals with the requirements and budget agreed with the client.</p>
+
+{% for d in deals %}
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <strong>{{ d.company.name }}</strong>
+    <span>
+      {% set bs_colors = {"not_started": "bg-secondary", "in_progress": "bg-info text-dark", "blocked": "bg-danger", "delivered": "bg-success"} %}
+      <span class="badge {{ bs_colors.get(d.build_status, 'bg-secondary') }}">{{ (d.build_status or 'not_started').replace('_', ' ')|capitalize }}</span>
+      {% if d.mismatch_flagged %}<span class="badge bg-warning text-dark">Mismatch flagged</span>{% endif %}
+    </span>
+  </div>
+  <div class="card-body">
+    <p class="mb-1"><strong>Value:</strong> {{ "%.2f"|format(d.value) if d.value is not none else "-" }}
+       &middot; <strong>Budget:</strong> {{ "%.2f"|format(d.budget) if d.budget is not none else "-" }}
+       &middot; <strong>Closed:</strong> {{ d.close_date.strftime("%d %b %Y") if d.close_date else "-" }}
+       &middot; <strong>Contact:</strong> {{ d.primary_contact.name if d.primary_contact else "-" }}</p>
+    <p class="mb-2"><strong>Requirements:</strong> {{ d.requirements or "None recorded" }}</p>
+    {% if d.mismatch_note %}
+    <div class="alert alert-warning py-2 mb-2"><strong>Mismatch note:</strong> {{ d.mismatch_note }}</div>
+    {% endif %}
+
+    {% if can_update_build %}
+    <form method="POST" action="{{ url_for('update_build_status', deal_id=d.id) }}" class="row g-2 align-items-end border-top pt-3">
+      <div class="col-auto">
+        <label class="form-label small">Build status</label>
+        <select name="build_status" class="form-select form-select-sm">
+          {% for s in build_statuses %}
+          <option value="{{ s }}" {% if d.build_status == s %}selected{% endif %}>{{ s.replace('_', ' ')|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col">
+        <label class="form-label small">Mismatch note (optional)</label>
+        <input type="text" name="mismatch_note" class="form-control form-control-sm" value="{{ d.mismatch_note or '' }}" placeholder="What does not match what was promised?">
+      </div>
+      <div class="col-auto">
+        <div class="form-check">
+          <input type="checkbox" name="mismatch_flagged" class="form-check-input" id="flag{{ d.id }}" {% if d.mismatch_flagged %}checked{% endif %}>
+          <label class="form-check-label small" for="flag{{ d.id }}">Flag to sales</label>
+        </div>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-dark">Update</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info">No won deals yet. Move a deal to the "won" stage to see it here.</div>
+{% endfor %}
+{% endblock %}
