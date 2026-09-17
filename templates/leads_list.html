@@ -10,6 +10,7 @@
   <thead>
     <tr>
       <th>Lead / Company</th>
+      <th>Temperature</th>
       <th>Source</th>
       <th>Status</th>
       <th>Assigned rep</th>
@@ -18,9 +19,12 @@
     </tr>
   </thead>
   <tbody>
+    {% set temp_colors = {"hot": "bg-danger", "warm": "bg-warning text-dark", "cold": "bg-secondary"} %}
     {% for lead in leads %}
+    {% set temp = lead_temperature(lead) %}
     <tr>
       <td><a href="{{ url_for('lead_detail', lead_id=lead.id) }}">{{ lead.company.name if lead.company else "Lead #" ~ lead.id }}</a></td>
+      <td><span class="badge {{ temp_colors[temp] }}">{{ temp|capitalize }}</span></td>
       <td><span class="badge bg-secondary">{{ lead.source or "-" }}</span></td>
       <td>
         {% set status_colors = {"new": "bg-secondary", "contacted": "bg-info text-dark", "qualified": "bg-success", "lost": "bg-danger"} %}
@@ -40,8 +44,9 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="6" class="text-center text-muted">No leads yet.</td></tr>
+    <tr><td colspan="7" class="text-center text-muted">No leads yet.</td></tr>
     {% endfor %}
   </tbody>
 </table>
+<p class="text-muted small">Hot = 3 or more activities and contact within 7 days. Warm = contact within 30 days. Cold = no contact in over 30 days, or no activity at all.</p>
 {% endblock %}

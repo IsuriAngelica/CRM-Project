@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Reminders</h2>
+  {% if can_edit_sales %}
+  <a href="{{ url_for('add_reminder') }}" class="btn btn-dark">+ Add reminder</a>
+  {% endif %}
+</div>
+<table class="table table-bordered bg-white">
+  <thead>
+    <tr><th>When</th><th>Message</th><th>Linked to</th><th>Status</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for r in reminders %}
+    <tr>
+      <td>{{ r.remind_at.strftime("%d %b %Y, %I:%M %p") }}</td>
+      <td>{{ r.message or "-" }}</td>
+      <td>
+        {% if r.deal %}
+          <a href="{{ url_for('deal_detail', deal_id=r.deal.id) }}">Deal: {{ r.deal.company.name }}</a>
+        {% elif r.lead %}
+          <a href="{{ url_for('lead_detail', lead_id=r.lead.id) }}">Lead: {{ r.lead.company.name if r.lead.company else "Lead #" ~ r.lead.id }}</a>
+        {% else %}-{% endif %}
+      </td>
+      <td>
+        {% if r.remind_at < now %}
+          <span class="badge bg-danger">Overdue</span>
+        {% else %}
+          <span class="badge bg-secondary">Upcoming</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if can_edit_sales %}
+        <form method="POST" action="{{ url_for('delete_reminder', reminder_id=r.id) }}" onsubmit="return confirm('Delete this reminder?');" class="d-inline">
+          <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="text-center text-muted">No reminders yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

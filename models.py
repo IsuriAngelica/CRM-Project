@@ -24,18 +24,15 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     def is_locked(self):
-        """True if this account is currently locked out."""
         return self.locked_until is not None and datetime.now() < self.locked_until
 
     def register_failed_login(self):
-        """Count a wrong password. Lock the account for 15 minutes at 5 failures."""
         self.failed_login_attempts = (self.failed_login_attempts or 0) + 1
         if self.failed_login_attempts >= 5:
             self.locked_until = datetime.now() + timedelta(minutes=15)
             self.failed_login_attempts = 0
 
     def reset_failed_logins(self):
-        """Clear the counter and any lock after a successful login."""
         self.failed_login_attempts = 0
         self.locked_until = None
 
@@ -143,3 +140,6 @@ class Reminder(db.Model):
     lead_id = db.Column(db.Integer, db.ForeignKey("leads.id"), nullable=True)
     remind_at = db.Column(db.DateTime, nullable=False)
     message = db.Column(db.String(255))
+
+    deal = db.relationship("Deal", backref="reminders", lazy=True)
+    lead = db.relationship("Lead", backref="reminders", lazy=True)

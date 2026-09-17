@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-3">Add reminder</h2>
+<form method="POST" class="col-md-6">
+  <div class="mb-3">
+    <label class="form-label">Remind me at</label>
+    <input type="datetime-local" name="remind_at" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Message</label>
+    <input type="text" name="message" class="form-control" placeholder="e.g. Follow up on the proposal" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Link to a deal</label>
+    <select name="deal_id" class="form-select">
+      <option value="">-- None --</option>
+      {% for d in deals %}
+      <option value="{{ d.id }}">{{ d.company.name }} ({{ d.stage }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Or link to a lead</label>
+    <select name="lead_id" class="form-select">
+      <option value="">-- None --</option>
+      {% for l in leads %}
+      <option value="{{ l.id }}">{{ l.company.name if l.company else "Lead #" ~ l.id }} ({{ l.status }})</option>
+      {% endfor %}
+    </select>
+    <div class="form-text">Choose either a deal or a lead, not both.</div>
+  </div>
+  <button type="submit" class="btn btn-dark">Save reminder</button>
+  <a href="{{ url_for('reminders') }}" class="btn btn-outline-secondary">Cancel</a>
+</form>
+{% endblock %}

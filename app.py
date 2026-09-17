@@ -42,7 +42,7 @@ def get_stage_names():
     return [s.name for s in models.Stage.query.order_by(models.Stage.position).all()]
 
 
-MAX_MONEY = 9999999999.99  # matches db.Numeric(12, 2)
+MAX_MONEY = 9999999999.99
 
 STAGE_PALETTE = [
     "bg-secondary", "bg-info text-dark", "bg-primary",
@@ -52,21 +52,13 @@ STAGE_PALETTE = [
 # ---------------------------------------------------------------------------
 # ROLE PERMISSION GROUPS
 # ---------------------------------------------------------------------------
-# Full access to everything, including deleting records and managing users
 MANAGERS = ("admin", "sales_manager")
-
-# Can create and edit sales records (companies, contacts, leads, deals)
 SALES_EDITORS = ("admin", "sales_manager", "account_executive")
-
-# Can create and edit leads only
 LEAD_EDITORS = ("admin", "sales_manager", "account_executive", "marketing")
-
-# Read-only roles: can view records but cannot change anything
 READ_ONLY = ("delivery", "ceo")
 
 
 def parse_money(raw, field_label):
-    """Return (value, error). Value is None when the field was left blank."""
     if raw is None or str(raw).strip() == "":
         return None, None
     try:
@@ -80,8 +72,30 @@ def parse_money(raw, field_label):
     return round(amount, 2), None
 
 
+def lead_temperature(lead):
+    """CRM-19: classify a lead as hot, warm or cold from its activity history."""
+    activities = (
+        models.Activity.query
+        .filter_by(related_type="Lead", related_id=lead.id)
+        .order_by(models.Activity.created_at.desc())
+        .all()
+    )
+    count = len(activities)
+    if count == 0:
+        return "cold"
+
+    last = activities[0].created_at
+    days_since = (datetime.now() - last).days
+
+    if count >= 3 and days_since <= 7:
+        return "hot"
+    if days_since <= 30:
+        return "warm"
+    return "cold"
+
+
 @app.context_processor
-def inject_stage_colors():
+def inject_helpers():
     colors = {}
     try:
         for i, name in enumerate(get_stage_names()):
@@ -92,14 +106,10 @@ def inject_stage_colors():
     def stage_color(name):
         return colors.get(name, "bg-secondary")
 
-    return dict(stage_color=stage_color)
-
-
-@app.context_processor
-def inject_permissions():
-    """Make permission checks available inside templates so we can hide buttons."""
     role = getattr(current_user, "role", None)
     return dict(
+        stage_color=stage_color,
+        lead_temperature=lead_temperature,
         can_manage=role in MANAGERS,
         can_edit_sales=role in SALES_EDITORS,
         can_edit_leads=role in LEAD_EDITORS,
@@ -145,7 +155,6 @@ def login():
         password = request.form.get("password")
         user = models.User.query.filter_by(email=email).first()
 
-        # Refuse straight away if this account is currently locked
         if user and user.is_locked():
             seconds_left = (user.locked_until - datetime.now()).total_seconds()
             minutes_left = int(seconds_left // 60) + 1
@@ -160,7 +169,6 @@ def login():
                 return redirect(url_for("change_password"))
             return redirect(url_for("dashboard"))
 
-        # Wrong password on a real account: count it
         if user:
             user.register_failed_login()
             db.session.commit()
@@ -278,6 +286,135 @@ def change_password():
         return redirect(url_for("dashboard"))
 
     return render_template("change_password.html", forced=forced)
+
+
+# ---------------------------------------------------------------------------
+# CRM-20: MY DASHBOARD
+# ---------------------------------------------------------------------------
+@app.route("/my-dashboard")
+@login_required
+def my_dashboard():
+    if current_user.role == "account_executive":
+        my_deals = models.Deal.query.filter_by(owner_id=current_user.id).all()
+        my_leads = models.Lead.query.filter_by(assigned_rep_id=current_user.id).all()
+    else:
+        my_deals = models.Deal.query.all()
+        my_leads = models.Lead.query.all()
+
+    open_deals = [d for d in my_deals if d.stage not in ("won", "lost")]
+    total_value = sum(float(d.value) for d in open_deals if d.value is not None)
+
+    deal_ids = [d.id for d in my_deals]
+    lead_ids = [l.id for l in my_leads]
+
+    recent_activity = (
+        models.Activity.query
+        .filter(
+            db.or_(
+                db.and_(models.Activity.related_type == "Deal",
+                        models.Activity.related_id.in_(deal_ids or [0])),
+                db.and_(models.Activity.related_type == "Lead",
+                        models.Activity.related_id.in_(lead_ids or [0])),
+            )
+        )
+        .order_by(models.Activity.created_at.desc())
+        .limit(8)
+        .all()
+    )
+
+    upcoming = (
+        models.Reminder.query
+        .filter(models.Reminder.remind_at <= datetime.now() + timedelta(days=7))
+        .order_by(models.Reminder.remind_at)
+        .limit(8)
+        .all()
+    )
+    if current_user.role == "account_executive":
+        upcoming = [r for r in upcoming if (r.deal_id in deal_ids) or (r.lead_id in lead_ids)]
+
+    return render_template(
+        "my_dashboard.html",
+        open_deals=open_deals,
+        my_leads=my_leads,
+        total_value=total_value,
+        recent_activity=recent_activity,
+        upcoming=upcoming,
+    )
+
+
+# ---------------------------------------------------------------------------
+# CRM-18: REMINDERS
+# ---------------------------------------------------------------------------
+@app.route("/reminders")
+@login_required
+def reminders():
+    all_reminders = models.Reminder.query.order_by(models.Reminder.remind_at).all()
+
+    if current_user.role == "account_executive":
+        my_deal_ids = [d.id for d in models.Deal.query.filter_by(owner_id=current_user.id).all()]
+        my_lead_ids = [l.id for l in models.Lead.query.filter_by(assigned_rep_id=current_user.id).all()]
+        all_reminders = [
+            r for r in all_reminders
+            if (r.deal_id in my_deal_ids) or (r.lead_id in my_lead_ids)
+        ]
+
+    return render_template("reminders_list.html", reminders=all_reminders, now=datetime.now())
+
+
+@app.route("/reminders/add", methods=["GET", "POST"])
+@login_required
+@role_required(*SALES_EDITORS)
+def add_reminder():
+    all_deals = models.Deal.query.order_by(models.Deal.id.desc()).all()
+    all_leads = models.Lead.query.order_by(models.Lead.created_at.desc()).all()
+
+    if request.method == "POST":
+        remind_at_raw = request.form.get("remind_at")
+        message = (request.form.get("message") or "").strip()
+        deal_id = request.form.get("deal_id") or None
+        lead_id = request.form.get("lead_id") or None
+
+        if not remind_at_raw:
+            flash("Please choose a reminder date and time.")
+            return redirect(url_for("add_reminder"))
+
+        if not deal_id and not lead_id:
+            flash("A reminder must be linked to either a deal or a lead.")
+            return redirect(url_for("add_reminder"))
+
+        if deal_id and lead_id:
+            flash("Link the reminder to either a deal or a lead, not both.")
+            return redirect(url_for("add_reminder"))
+
+        try:
+            remind_at = datetime.strptime(remind_at_raw, "%Y-%m-%dT%H:%M")
+        except ValueError:
+            flash("That date and time could not be read.")
+            return redirect(url_for("add_reminder"))
+
+        reminder = models.Reminder(
+            deal_id=int(deal_id) if deal_id else None,
+            lead_id=int(lead_id) if lead_id else None,
+            remind_at=remind_at,
+            message=message,
+        )
+        db.session.add(reminder)
+        db.session.commit()
+        flash("Reminder was created.", "success")
+        return redirect(url_for("reminders"))
+
+    return render_template("reminder_form.html", deals=all_deals, leads=all_leads)
+
+
+@app.route("/reminders/<int:reminder_id>/delete", methods=["POST"])
+@login_required
+@role_required(*SALES_EDITORS)
+def delete_reminder(reminder_id):
+    reminder = models.Reminder.query.get_or_404(reminder_id)
+    db.session.delete(reminder)
+    db.session.commit()
+    flash("Reminder was deleted.", "success")
+    return redirect(url_for("reminders"))
 
 
 # ---------------------------------------------------------------------------
@@ -480,7 +617,7 @@ def delete_contact(contact_id):
 
 
 # ---------------------------------------------------------------------------
-# LEADS  (Marketing can edit these)
+# LEADS
 # ---------------------------------------------------------------------------
 @app.route("/leads")
 @login_required
@@ -581,7 +718,7 @@ def delete_lead(lead_id):
 
 
 # ---------------------------------------------------------------------------
-# DEALS  (Marketing cannot touch these)
+# DEALS
 # ---------------------------------------------------------------------------
 @app.route("/deals")
 @login_required
@@ -756,7 +893,7 @@ def update_deal_stage(deal_id):
 
 
 # ---------------------------------------------------------------------------
-# STAGES  (managers only)
+# STAGES
 # ---------------------------------------------------------------------------
 @app.route("/stages")
 @login_required
@@ -808,7 +945,7 @@ def delete_stage(stage_id):
 
 
 # ---------------------------------------------------------------------------
-# USERS  (managers only)
+# USERS
 # ---------------------------------------------------------------------------
 @app.route("/users")
 @login_required
@@ -889,8 +1026,6 @@ def delete_user(user_id):
         flash(f'Cannot delete "{user.name}" — they still own {deal_count} deal(s) and are assigned {lead_count} lead(s). Reassign these first.')
         return redirect(url_for("users"))
 
-    # Remove any password reset tokens belonging to this user first.
-    # These rows point at the user and cannot be left orphaned.
     models.PasswordResetToken.query.filter_by(user_id=user.id).delete()
 
     db.session.delete(user)

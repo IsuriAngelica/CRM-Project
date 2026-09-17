@@ -7,20 +7,22 @@
 </head>
 <body>
   <nav class="navbar navbar-dark bg-dark mb-4">
-    <div class="container">
+    <div class="container-fluid px-4">
       <span class="navbar-brand">CRM</span>
       {% if current_user.is_authenticated %}
         <div>
+          <a href="{{ url_for('my_dashboard') }}" class="text-white text-decoration-none ms-3">My Dashboard</a>
           <a href="{{ url_for('companies') }}" class="text-white text-decoration-none ms-3">Companies</a>
           <a href="{{ url_for('contacts') }}" class="text-white text-decoration-none ms-3">Contacts</a>
           <a href="{{ url_for('leads') }}" class="text-white text-decoration-none ms-3">Leads</a>
           <a href="{{ url_for('deals') }}" class="text-white text-decoration-none ms-3">Deals</a>
           <a href="{{ url_for('pipeline') }}" class="text-white text-decoration-none ms-3">Pipeline</a>
+          <a href="{{ url_for('reminders') }}" class="text-white text-decoration-none ms-3">Reminders</a>
           {% if can_manage %}
             <a href="{{ url_for('manage_stages') }}" class="text-white text-decoration-none ms-3">Stages</a>
             <a href="{{ url_for('users') }}" class="text-white text-decoration-none ms-3">Users</a>
           {% endif %}
-          <a href="{{ url_for('change_password') }}" class="text-white text-decoration-none ms-3">Change Password</a>
+          <a href="{{ url_for('change_password') }}" class="text-white text-decoration-none ms-3">Password</a>
           <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm ms-3">Log out</a>
         </div>
       {% endif %}

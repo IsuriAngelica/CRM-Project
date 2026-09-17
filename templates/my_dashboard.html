@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">My Dashboard</h2>
+
+<div class="row mb-4">
+  <div class="col-md-4">
+    <div class="card text-center"><div class="card-body">
+      <h3 class="text-primary">{{ open_deals|length }}</h3>
+      <div class="text-muted">Open deals</div>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center"><div class="card-body">
+      <h3 class="text-success">{{ "%.2f"|format(total_value) }}</h3>
+      <div class="text-muted">Open pipeline value</div>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center"><div class="card-body">
+      <h3 class="text-info">{{ my_leads|length }}</h3>
+      <div class="text-muted">My leads</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-6">
+    <h5>Reminders due soon</h5>
+    <ul class="list-group mb-4">
+      {% for r in upcoming %}
+      <li class="list-group-item">
+        <strong>{{ r.remind_at.strftime("%d %b %Y, %I:%M %p") }}</strong><br>
+        {{ r.message or "(no message)" }}
+        <div class="small text-muted">
+          {% if r.deal %}Deal: {{ r.deal.company.name }}
+          {% elif r.lead %}Lead: {{ r.lead.company.name if r.lead.company else "Lead #" ~ r.lead.id }}{% endif %}
+        </div>
+      </li>
+      {% else %}
+      <li class="list-group-item text-muted text-center">Nothing due in the next 7 days.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="col-md-6">
+    <h5>Recent activity</h5>
+    <ul class="list-group mb-4">
+      {% for a in recent_activity %}
+      <li class="list-group-item">
+        <span class="badge bg-secondary">{{ a.type }}</span> {{ a.notes }}
+        <div class="small text-muted">{{ a.created_at.strftime("%d %b %Y, %I:%M %p") if a.created_at else "" }}</div>
+      </li>
+      {% else %}
+      <li class="list-group-item text-muted text-center">No activity yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<h5>My open deals</h5>
+<table class="table table-bordered bg-white">
+  <thead><tr><th>Company</th><th>Stage</th><th>Value</th><th>Close date</th></tr></thead>
+  <tbody>
+    {% for d in open_deals %}
+    <tr>
+      <td><a href="{{ url_for('deal_detail', deal_id=d.id) }}">{{ d.company.name }}</a></td>
+      <td><span class="badge {{ stage_color(d.stage) }}">{{ d.stage }}</span></td>
+      <td>{{ "%.2f"|format(d.value) if d.value is not none else "-" }}</td>
+      <td>{{ d.close_date.strftime("%d %b %Y") if d.close_date else "-" }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="text-center text-muted">No open deals.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
