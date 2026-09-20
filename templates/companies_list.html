@@ -1,19 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h2>Companies</h2>
+{% from "_ui.html" import icon %}
+<div class="page-header">
+  <div><div class="eyebrow">{{ ui_section }}</div><h1>Companies</h1><p>Manage the organisations behind your opportunities.</p></div>
   {% if can_edit_sales %}
-  <a href="{{ url_for('add_company') }}" class="btn btn-dark">+ Add company</a>
+  <a href="{{ url_for('add_company') }}" class="btn primary">+ Add company</a>
   {% endif %}
 </div>
-<table class="table table-bordered bg-white">
+<div class="panel data-panel" data-record-list><div class="toolbar"><label class="search-field">{{ icon("search") }}<input type="search" data-table-search aria-label="Filter this list" placeholder="Search this list..."></label><span class="muted tiny" data-table-count aria-live="polite"></span></div><div class="table-wrap"><table class="table table-bordered bg-white">
   <thead>
     <tr>
-      <th>Name</th>
-      <th>Industry</th>
-      <th>Phone</th>
-      <th>Address</th>
-      <th></th>
+      <th scope="col">Name</th>
+      <th scope="col">Industry</th>
+      <th scope="col">Phone</th>
+      <th scope="col">Address</th>
+      <th scope="col">Actions</th>
     </tr>
   </thead>
   <tbody>
@@ -27,11 +28,11 @@
       <td>{{ company.address or "-" }}</td>
       <td class="text-nowrap">
         {% if can_edit_sales %}
-        <a href="{{ url_for('edit_company', company_id=company.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+        <a href="{{ url_for('edit_company', company_id=company.id) }}" class="btn small btn-outline-secondary" title="Edit record" aria-label="Edit record">{{ icon("edit") }}</a>
         {% endif %}
         {% if can_manage %}
         <form method="POST" action="{{ url_for('delete_company', company_id=company.id) }}" onsubmit="return confirm('Delete this company? This cannot be undone.');" class="d-inline">
-          <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+          <button type="submit" class="btn small danger" title="Delete record" aria-label="Delete record">{{ icon("trash") }}</button>
         </form>
         {% endif %}
       </td>
@@ -40,5 +41,5 @@
     <tr><td colspan="5" class="text-center text-muted">No companies yet.</td></tr>
     {% endfor %}
   </tbody>
-</table>
+</table></div></div>
 {% endblock %}

@@ -1,45 +1,5 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h2>Reminders</h2>
-  {% if can_edit_sales %}
-  <a href="{{ url_for('add_reminder') }}" class="btn btn-dark">+ Add reminder</a>
-  {% endif %}
-</div>
-<table class="table table-bordered bg-white">
-  <thead>
-    <tr><th>When</th><th>Message</th><th>Linked to</th><th>Status</th><th></th></tr>
-  </thead>
-  <tbody>
-    {% for r in reminders %}
-    <tr>
-      <td>{{ r.remind_at.strftime("%d %b %Y, %I:%M %p") }}</td>
-      <td>{{ r.message or "-" }}</td>
-      <td>
-        {% if r.deal %}
-          <a href="{{ url_for('deal_detail', deal_id=r.deal.id) }}">Deal: {{ r.deal.company.name }}</a>
-        {% elif r.lead %}
-          <a href="{{ url_for('lead_detail', lead_id=r.lead.id) }}">Lead: {{ r.lead.company.name if r.lead.company else "Lead #" ~ r.lead.id }}</a>
-        {% else %}-{% endif %}
-      </td>
-      <td>
-        {% if r.remind_at < now %}
-          <span class="badge bg-danger">Overdue</span>
-        {% else %}
-          <span class="badge bg-secondary">Upcoming</span>
-        {% endif %}
-      </td>
-      <td>
-        {% if can_edit_sales %}
-        <form method="POST" action="{{ url_for('delete_reminder', reminder_id=r.id) }}" onsubmit="return confirm('Delete this reminder?');" class="d-inline">
-          <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-        </form>
-        {% endif %}
-      </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="5" class="text-center text-muted">No reminders yet.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+{% extends "base.html" %}{% from "_ui.html" import icon %}{% block content %}
+<div class="page-header"><div><div class="eyebrow">WORKSPACE</div><h1>Reminders</h1><p>Keep your next follow-up in view.</p></div>{% if can_edit_sales %}<a class="btn primary" href="{{ url_for('add_reminder') }}">{{ icon('plus') }} Add reminder</a>{% endif %}</div>
+<nav class="section-tabs" aria-label="Reminder status">{% for key,label in [('active','Active'),('completed','Completed'),('all','All reminders')] %}<a href="{{ url_for('reminders',state=key) }}" class="{{ 'active' if state==key else '' }}" {% if state==key %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+<div class="panel data-panel" data-record-list><div class="toolbar"><label class="search-field">{{ icon('search') }}<input type="search" data-table-search aria-label="Search reminders" placeholder="Search reminders..."></label><span data-table-count class="muted tiny" aria-live="polite"></span></div><div class="table-wrap"><table><thead><tr><th scope="col">When</th><th scope="col">Message</th><th scope="col">Linked record</th><th scope="col">Status</th><th scope="col">Actions</th></tr></thead><tbody>{% for r in reminders %}<tr><td>{{ r.remind_at.strftime('%d %b %Y, %I:%M %p') }}</td><td>{{ r.message or 'No message' }}</td><td>{% if r.deal %}<a href="{{ url_for('deal_detail',deal_id=r.deal.id) }}">{{ r.deal.company.name }} · Deal #{{ r.deal.id }}</a>{% elif r.lead %}<a href="{{ url_for('lead_detail',lead_id=r.lead.id) }}">{{ r.lead.display_name }} · Lead #{{ r.lead.id }}</a>{% else %}Record unavailable{% endif %}</td><td>{% if r.completed_at %}<span class="badge bg-success">Completed</span><div class="tiny muted">{{ r.completed_at.strftime('%d %b %Y, %H:%M') }}</div>{% elif r.remind_at < now %}<span class="badge bg-danger">Overdue</span>{% else %}<span class="badge bg-info">Upcoming</span>{% endif %}</td><td>{% if can_edit_sales %}<form method="POST" class="d-inline" action="{{ url_for('reopen_reminder' if r.completed_at else 'complete_reminder',reminder_id=r.id) }}"><button type="submit" class="btn small">{{ 'Reopen' if r.completed_at else 'Mark completed' }}</button></form> <form method="POST" class="d-inline" action="{{ url_for('delete_reminder',reminder_id=r.id) }}" data-confirm="Permanently delete this reminder?"><button type="submit" class="btn small danger" aria-label="Delete reminder">{{ icon('trash') }}</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="5" class="empty-copy">No {{ state if state != 'all' else '' }} reminders.</td></tr>{% endfor %}</tbody></table></div></div>
 {% endblock %}

@@ -98,11 +98,26 @@ class Lead(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True)
     assigned_rep_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    prospect_name = db.Column(db.String(120), nullable=True)
+    email = db.Column(db.String(120), nullable=True)
+    phone = db.Column(db.String(30), nullable=True)
+    company_name = db.Column(db.String(150), nullable=True)
+    contact_id = db.Column(db.Integer, db.ForeignKey("contacts.id"), nullable=True)
+    contact = db.relationship("Contact", backref="leads", lazy=True)
     source = db.Column(db.String(100))
     status = db.Column(db.String(50), default="new")
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     assigned_rep = db.relationship("User", backref="leads", lazy=True)
+
+
+    @property
+    def display_name(self):
+        return self.prospect_name or (self.company.name if self.company else None) or self.company_name or f"Lead #{self.id}"
+
+    @property
+    def organisation(self):
+        return self.company.name if self.company else (self.company_name or "Not provided")
 
 
 class Deal(db.Model):
@@ -114,7 +129,10 @@ class Deal(db.Model):
     owner_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     stage = db.Column(db.String(50), default="new")
     value = db.Column(db.Numeric(12, 2))
-    close_date = db.Column(db.Date, nullable=True)
+    close_date = db.Column(db.Date, nullable=True)  # Expected close date (existing column).
+    actual_close_date = db.Column(db.Date, nullable=True)
+    lead_id = db.Column(db.Integer, db.ForeignKey("leads.id"), nullable=True, unique=True)
+    source_lead = db.relationship("Lead", backref=db.backref("converted_deal", uselist=False), lazy=True)
     requirements = db.Column(db.Text)
     budget = db.Column(db.Numeric(12, 2))
 
@@ -145,6 +163,7 @@ class Reminder(db.Model):
     lead_id = db.Column(db.Integer, db.ForeignKey("leads.id"), nullable=True)
     remind_at = db.Column(db.DateTime, nullable=False)
     message = db.Column(db.String(255))
+    completed_at = db.Column(db.DateTime, nullable=True)
 
     deal = db.relationship("Deal", backref="reminders", lazy=True)
     lead = db.relationship("Lead", backref="reminders", lazy=True)

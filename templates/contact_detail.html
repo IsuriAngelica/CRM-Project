@@ -1,43 +1,43 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="page-header">
   <div>
-    <h2>{{ contact.name }}</h2>
+    <div class="eyebrow">{{ ui_section }}</div><h1>{{ contact.name }}</h1>
     <p class="text-muted mb-0">
       {{ contact.role_title or "-" }} at {{ contact.company.name }} &middot; {{ contact.email or "-" }} &middot; {{ contact.phone or "-" }}
     </p>
   </div>
   <div class="text-nowrap">
-    <a href="{{ url_for('edit_contact', contact_id=contact.id) }}" class="btn btn-outline-secondary">Edit contact</a>
+    {% if can_edit_sales %}<a href="{{ url_for('edit_contact', contact_id=contact.id) }}" class="btn btn-outline-secondary">Edit contact</a>{% endif %}
     {% if current_user.role in ["admin", "sales_manager"] %}
     <form method="POST" action="{{ url_for('delete_contact', contact_id=contact.id) }}" onsubmit="return confirm('Delete this contact? This cannot be undone.');" class="d-inline">
-      <button type="submit" class="btn btn-outline-danger">Delete</button>
+      <button type="submit" class="btn danger">Delete</button>
     </form>
     {% endif %}
   </div>
 </div>
 
-<hr>
+<hr class="rule">
 
-<h4>Log an activity</h4>
+{% if can_edit_sales %}<h4>Log an activity</h4>
 <form method="POST" action="{{ url_for('add_contact_activity', contact_id=contact.id) }}" class="row g-2 align-items-end mb-4">
   <div class="col-auto">
-    <label class="form-label">Type</label>
-    <select name="type" class="form-select">
-      <option value="Call">Call</option>
-      <option value="Email">Email</option>
-      <option value="Meeting">Meeting</option>
-      <option value="Note">Note</option>
+    <label for="field-contact_detail-type-1" class="form-label">Type</label>
+    <select id="field-contact_detail-type-1" name="type" class="form-select">
+      <option value="Call" {% if fv("type", "Call") == "Call" %}selected{% endif %}>Call</option>
+      <option value="Email" {% if fv("type", "Call") == "Email" %}selected{% endif %}>Email</option>
+      <option value="Meeting" {% if fv("type", "Call") == "Meeting" %}selected{% endif %}>Meeting</option>
+      <option value="Note" {% if fv("type", "Call") == "Note" %}selected{% endif %}>Note</option>
     </select>
   </div>
   <div class="col">
-    <label class="form-label">What happened / was discussed</label>
-    <input type="text" name="notes" class="form-control" placeholder="e.g. Discussed pricing, sent proposal..." required>
+    <label for="field-contact_detail-notes-2" class="form-label">What happened / was discussed</label>
+    <input id="field-contact_detail-notes-2" type="text" name="notes" value="{{ fv('notes') }}" class="form-control" placeholder="e.g. Discussed pricing, sent proposal..." required>
   </div>
   <div class="col-auto">
-    <button type="submit" class="btn btn-dark">Log activity</button>
+    <button type="submit" class="btn primary">Log activity</button>
   </div>
-</form>
+</form>{% endif %}
 
 <h4>Timeline</h4>
 <ul class="list-group">

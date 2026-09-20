@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 class="mb-3">Search results</h2>
+<div class="page-header"><div><div class="eyebrow">{{ ui_section }}</div><h1>Search results</h1></div></div>
 {% if q %}
 <p class="text-muted">{{ total }} result(s) for "{{ q }}"</p>
 {% else %}
@@ -36,8 +36,8 @@
 <ul class="list-group mb-3">
   {% for l in leads %}
   <li class="list-group-item">
-    <a href="{{ url_for('lead_detail', lead_id=l.id) }}">{{ l.company.name if l.company else "Lead #" ~ l.id }}</a>
-    <span class="badge bg-info text-dark">{{ l.status }}</span>
+    <a href="{{ url_for('lead_detail', lead_id=l.id) }}">{{ l.display_name }}</a>
+    <span class="badge bg-info text-dark">{{ l.status }}</span><span class="muted small">{{ l.email or l.phone or "" }} · {{ l.organisation }}</span>
   </li>
   {% endfor %}
 </ul>

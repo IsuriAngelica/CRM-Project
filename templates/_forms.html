@@ -1,0 +1,16 @@
+{% macro input(name, label, default='', type='text', required=false, maxlength=none, hint='') %}
+<div class="field"><label for="field-{{ name }}">{{ label }}{% if required %} <span class="required">*</span>{% endif %}</label><input id="field-{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ '' if type == 'password' else fv(name, default) }}" {% if required %}required{% endif %} {% if maxlength %}maxlength="{{ maxlength }}"{% endif %} {% if type == 'number' %}min="0" max="9999999999.99" step="0.01"{% endif %} {% if type == 'password' %}minlength="6" maxlength="128" autocomplete="new-password"{% endif %}>{% if hint %}<small>{{ hint }}</small>{% endif %}</div>
+{% endmacro %}
+{% macro select(name, label, options, default='', blank='— None —', required=false) %}
+<div class="field"><label for="field-{{ name }}">{{ label }}{% if required %} <span class="required">*</span>{% endif %}</label><select id="field-{{ name }}" name="{{ name }}" {% if required %}required{% endif %}>{% if blank is not none %}<option value="">{{ blank }}</option>{% endif %}{% for value,title in options %}<option value="{{ value }}" {% if fv(name,default)|string == value|string %}selected{% endif %}>{{ title }}</option>{% endfor %}</select></div>
+{% endmacro %}
+{% macro company_select(companies, default='', required=false) %}
+<div class="field"><label for="field-company_id">Existing company{% if required %} *{% endif %}</label><select name="company_id" id="field-company_id" data-company-select {% if required %}required{% endif %}><option value="">— Select a company —</option>{% for c in companies %}<option value="{{ c.id }}" {% if fv('company_id',default)|string == c.id|string %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+{% endmacro %}
+{% macro contact_select(contacts, default='') %}
+<div class="field"><label for="field-contact_id">Linked contact (optional)</label><select name="contact_id" id="field-contact_id" data-contact-select><option value="">— None —</option>{% for c in contacts %}<option value="{{ c.id }}" data-company="{{ c.company_id }}" {% if fv('contact_id',default)|string == c.id|string %}selected{% endif %}>{{ c.name }} · {{ c.company.name }}</option>{% endfor %}</select><small>Only contacts from the selected company can be linked.</small></div>
+{% endmacro %}
+{% macro owner_select(users, name, default='') %}
+<div class="field"><label for="field-{{ name }}">{{ 'Assigned sales representative' if name == 'assigned_rep_id' else 'Sales owner' }}</label><select name="{{ name }}" id="field-{{ name }}">{% if current_user.role != 'account_executive' %}<option value="">— Unassigned —</option>{% endif %}{% for u in users %}{% if current_user.role != 'account_executive' or u.id == current_user.id %}<option value="{{ u.id }}" {% if fv(name, current_user.id if current_user.role == 'account_executive' else default)|string == u.id|string %}selected{% endif %}>{{ u.name }} · {{ u.role|replace('_',' ')|title }}</option>{% endif %}{% endfor %}</select></div>
+{% endmacro %}
+{% macro textarea(name, label, default='', hint='') %}<div class="field full"><label for="field-{{ name }}">{{ label }}</label><textarea name="{{ name }}" id="field-{{ name }}" maxlength="20000" rows="4">{{ fv(name,default) }}</textarea>{% if hint %}<small>{{ hint }}</small>{% endif %}</div>{% endmacro %}

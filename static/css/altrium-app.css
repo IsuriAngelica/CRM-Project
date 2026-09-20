@@ -1,0 +1,29 @@
+/* Altrium CRM - production additions on top of the reference system.
+   Load AFTER altrium.css. */
+
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* Prototype-only chrome that must not ship */
+.demo-badge,.bottom-note,.toast,.auth-brand-footer{display:none!important}
+
+/* Flash / status messages bound to Flask categories */
+.notice{border:1px solid var(--line);border-radius:9px;padding:12px 15px;
+  font-size:12px;margin-bottom:18px;line-height:1.6}
+.notice-success{color:var(--green);background:var(--green-soft);border-color:#c6e4d3}
+.notice-error{color:var(--red);background:var(--red-soft);border-color:#f0cdcc}
+.notice-info{color:var(--blue);background:var(--blue-soft);border-color:#cfe0f4}
+
+/* Mobile drawer scrim */
+.sidebar-scrim{position:fixed;inset:0;background:#17191d59;z-index:25;border:0}
+@media(min-width:761px){.sidebar-scrim{display:none!important}}
+
+/* Server-side field errors sit beside the field, value preserved */
+.field.has-error input,.field.has-error select,.field.has-error textarea{
+  border-color:#d9a3a1;background:#fffcfc}
+.field .field-error{color:var(--red);font-size:11px;margin-top:6px}
+
+/* Focus visibility (spec: 3px #866000, 3px offset) */
+a:focus-visible,button:focus-visible,input:focus-visible,
+select:focus-visible,textarea:focus-visible{
+  outline:3px solid var(--focus);outline-offset:3px;border-radius:5px}

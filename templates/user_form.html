@@ -1,30 +1,9 @@
-{% extends "base.html" %}
-{% block content %}
-<h2 class="mb-3">{{ "Edit user" if user else "Add user" }}</h2>
-<form method="POST">
-  <div class="mb-3">
-    <label class="form-label">Name</label>
-    <input type="text" name="name" class="form-control" value="{{ user.name if user else '' }}" required>
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Email</label>
-    <input type="email" name="email" class="form-control" value="{{ user.email if user else '' }}" required>
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Role</label>
-    <select name="role" class="form-select">
-      {% for r in ["account_executive", "sales_manager", "marketing", "delivery", "ceo", "admin"] %}
-        <option value="{{ r }}" {% if user and user.role == r %}selected{% endif %}>
-          {{ r.replace("_", " ")|capitalize }}
-        </option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="mb-3">
-    <label class="form-label">{{ "New password (leave blank to keep current)" if user else "Password" }}</label>
-    <input type="password" name="password" class="form-control" {% if not user %}required{% endif %}>
-  </div>
-  <button type="submit" class="btn btn-dark">Save user</button>
-  <a href="{{ url_for('users') }}" class="btn btn-outline-secondary">Cancel</a>
-</form>
-{% endblock %}
+{% extends "base.html" %}{% import "_forms.html" as f with context %}{% block content %}
+<div class="page-header"><div><div class="eyebrow">{{ ui_section }}</div><h1>{{ 'Edit user' if user else 'Add user' }}</h1><p>Complete the details below. Required fields are marked *.</p></div></div>
+<div class="form-layout"><form method="POST" class="panel form-card"><div class="panel-head"><h2>Record details</h2></div><div class="form-body"><div class="form-grid">
+{{ f.input('name','Name',user.name if user else '',required=true,maxlength=120) }}
+{{ f.input('email','Email',user.email if user else '',type='email',required=true,maxlength=120) }}
+{% set options=[] %}{% for role in all_roles %}{% set _=options.append((role,role|replace('_',' ')|title)) %}{% endfor %}
+{{ f.select('role','Role',options,user.role if user else 'account_executive',blank=none) }}
+{% if not user or user.id != current_user.id %}{{ f.input('password','Temporary password' if not user else 'New temporary password (optional)',type='password',required=not user,hint='At least six characters. The user must change this password at next sign-in. Leave blank to keep an existing password.') }}{% else %}<div class="notice">Change your own password from <a href="{{ url_for('change_password') }}">Security</a>.</div>{% endif %}
+</div></div><div class="form-footer"><small>Check the details before saving.</small><div class="page-actions"><button type="submit" class="btn primary">Save user</button><a class="btn" href="{{ url_for('users') }}">Cancel</a></div></div></form><aside class="form-aside"><div class="eyebrow">WORKSPACE GUIDE</div><h3>Keep account access clear</h3><p>The final Admin cannot be deleted or demoted. Reassign owned leads and deals before moving a sales user to a non-sales role.</p></aside></div>{% endblock %}

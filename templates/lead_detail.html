@@ -1,42 +1,42 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="page-header">
   <div>
-    <h2>{{ lead.company.name if lead.company else "Lead" }}</h2>
+    <div class="eyebrow">{{ ui_section }}</div><h1>{{ lead.display_name }}</h1>
     <p class="text-muted mb-0">
       Source: {{ lead.source or "-" }} &middot; Status: {{ lead.status }} &middot;
       Assigned to: {{ lead.assigned_rep.name if lead.assigned_rep else "Unassigned" }}
     </p>
   </div>
   <div class="text-nowrap">
-    <a href="{{ url_for('edit_lead', lead_id=lead.id) }}" class="btn btn-outline-secondary">Edit lead</a>
-    <form method="POST" action="{{ url_for('delete_lead', lead_id=lead.id) }}" onsubmit="return confirm('Delete this lead? This cannot be undone.');" class="d-inline">
-      <button type="submit" class="btn btn-outline-danger">Delete</button>
-    </form>
+    {% if can_edit_leads %}<a href="{{ url_for('edit_lead', lead_id=lead.id) }}" class="btn btn-outline-secondary">Edit lead</a>{% endif %}
+{% if can_edit_sales %}    <form method="POST" action="{{ url_for('delete_lead', lead_id=lead.id) }}" onsubmit="return confirm('Delete this lead? This cannot be undone.');" class="d-inline">
+      <button type="submit" class="btn danger">Delete</button>
+    </form>{% endif %}
   </div>
 </div>
 
-<hr>
+<section class="panel"><div class="panel-head"><h2>Prospect details</h2></div><div class="panel-body"><dl class="detail-kv"><dt>Email</dt><dd>{{ lead.email or 'Not provided' }}</dd><dt>Phone</dt><dd>{{ lead.phone or 'Not provided' }}</dd><dt>Company</dt><dd>{{ lead.organisation }}</dd><dt>Linked contact</dt><dd>{{ lead.contact.name if lead.contact else 'Not linked' }}</dd></dl>{% if not lead.prospect_name %}<p class="notice">This is an older lead. Add the prospect's name and contact details before qualifying it.</p>{% endif %}{% if lead.converted_deal %}<p><a class="btn" href="{{ url_for('deal_detail',deal_id=lead.converted_deal.id) }}">View linked deal #{{ lead.converted_deal.id }}</a></p>{% elif can_edit_sales and lead.status == 'qualified' %}<a class="btn primary" href="{{ url_for('convert_lead',lead_id=lead.id) }}">Convert to deal</a>{% else %}<p class="muted small">Sales can convert this lead after it is qualified.</p>{% endif %}</div></section><hr class="rule">
 
-<h4>Log an activity</h4>
+{% if can_edit_leads %}<h4>Log an activity</h4>
 <form method="POST" action="{{ url_for('add_lead_activity', lead_id=lead.id) }}" class="row g-2 align-items-end mb-4">
   <div class="col-auto">
-    <label class="form-label">Type</label>
-    <select name="type" class="form-select">
-      <option value="Call">Call</option>
-      <option value="Email">Email</option>
-      <option value="Meeting">Meeting</option>
-      <option value="Note">Note</option>
+    <label for="field-lead_detail-type-1" class="form-label">Type</label>
+    <select id="field-lead_detail-type-1" name="type" class="form-select">
+      <option value="Call" {% if fv("type", "Call") == "Call" %}selected{% endif %}>Call</option>
+      <option value="Email" {% if fv("type", "Call") == "Email" %}selected{% endif %}>Email</option>
+      <option value="Meeting" {% if fv("type", "Call") == "Meeting" %}selected{% endif %}>Meeting</option>
+      <option value="Note" {% if fv("type", "Call") == "Note" %}selected{% endif %}>Note</option>
     </select>
   </div>
   <div class="col">
-    <label class="form-label">What happened / was discussed</label>
-    <input type="text" name="notes" class="form-control" placeholder="e.g. Discussed pricing, sent proposal..." required>
+    <label for="field-lead_detail-notes-2" class="form-label">What happened / was discussed</label>
+    <input id="field-lead_detail-notes-2" type="text" name="notes" value="{{ fv('notes') }}" class="form-control" placeholder="e.g. Discussed pricing, sent proposal..." required>
   </div>
   <div class="col-auto">
-    <button type="submit" class="btn btn-dark">Log activity</button>
+    <button type="submit" class="btn primary">Log activity</button>
   </div>
-</form>
+</form>{% endif %}
 
 <h4>Timeline</h4>
 <ul class="list-group">

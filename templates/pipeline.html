@@ -1,77 +1,11 @@
-{% extends "base.html" %}
-{% block content %}
-<h2 class="mb-3">Pipeline</h2>
-
-<div class="d-flex gap-3 overflow-auto pb-3" style="align-items: flex-start;">
-  {% for stage in stages %}
-  <div class="flex-shrink-0" style="width: 280px;">
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span class="text-capitalize fw-semibold">{{ stage }}</span>
-        <span class="badge {{ stage_color(stage) }}" data-count-for="{{ stage }}">{{ deals_by_stage[stage]|length }}</span>
-      </div>
-      <div class="card-body p-2 stage-column" data-stage="{{ stage }}" style="min-height: 220px;">
-        {% for deal in deals_by_stage[stage] %}
-        <div class="card mb-2 deal-card" draggable="true" data-deal-id="{{ deal.id }}">
-          <div class="card-body p-2">
-            <a href="{{ url_for('deal_detail', deal_id=deal.id) }}" class="fw-semibold text-decoration-none">{{ deal.company.name }}</a>
-            <div class="small text-muted">
-              {{ "%.2f"|format(deal.value) if deal.value is not none else "-" }}
-              &middot; {{ deal.owner.name if deal.owner else "Unassigned" }}
-            </div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-  {% endfor %}
-</div>
-
-<script>
-function refreshCounts() {
-  document.querySelectorAll('.stage-column').forEach(function (col) {
-    var badge = document.querySelector('[data-count-for="' + CSS.escape(col.dataset.stage) + '"]');
-    if (badge) badge.textContent = col.querySelectorAll('.deal-card').length;
-  });
-}
-
-var dragged = null;
-
-document.querySelectorAll('.deal-card').forEach(function (card) {
-  card.addEventListener('dragstart', function (e) {
-    dragged = card;
-    e.dataTransfer.effectAllowed = 'move';
-  });
-});
-
-document.querySelectorAll('.stage-column').forEach(function (col) {
-  col.addEventListener('dragover', function (e) { e.preventDefault(); });
-  col.addEventListener('drop', function (e) {
-    e.preventDefault();
-    if (!dragged) return;
-    var previousColumn = dragged.parentElement;
-    var movedCard = dragged;
-    col.appendChild(movedCard);
-    refreshCounts();
-
-    fetch('/deals/' + movedCard.dataset.dealId + '/update_stage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stage: col.dataset.stage })
-    })
-    .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
-    .then(function (data) { if (!data.success) throw new Error('rejected'); })
-    .catch(function () {
-      previousColumn.appendChild(movedCard);
-      refreshCounts();
-      alert('Could not move that deal. Please refresh and try again.');
-    });
-
-    dragged = null;
-  });
-});
-
-refreshCounts();
-</script>
-{% endblock %}
+{% extends "base.html" %}{% from "_ui.html" import icon %}{% block content %}
+<div class="page-header"><div><div class="eyebrow">WORKSPACE</div><h1>Pipeline</h1><p>Your opportunities, from first conversation to close.</p></div><div class="page-actions"><a class="btn" href="{{ url_for('deals') }}">List view</a>{% if can_edit_sales %}<a class="btn primary" href="{{ url_for('add_deal') }}">{{ icon('plus') }} Add deal</a>{% endif %}</div></div>
+<div class="board-toolbar"><span class="muted small">{% if can_edit_sales %}Drag a card to another stage, or use its stage menu.{% else %}View deal progress across your pipeline.{% endif %}</span><span class="tag">{{ stages|length }} stages</span></div>
+<div id="pipelineStatus" role="status" aria-live="polite" class="ui-status"></div>
+<div class="kanban">{% for stage in stages %}<section class="kanban-column"><div class="kanban-column-head"><div class="kanban-title"><span><span class="dot" style="color:{{ '#69a789' if stage=='won' else '#ca8585' if stage=='lost' else '#d4a538' }}"></span>{{ stage|replace('_',' ')|capitalize }}</span><span class="pill-count" data-count-for="{{ stage }}">{{ deals_by_stage[stage]|length }}</span></div><small><span data-value-for="{{ stage }}">{{ '{:,.2f}'.format(deals_by_stage[stage]|map(attribute='value')|reject('none')|sum) }}</span> LKR</small></div><div class="stage-column" data-stage="{{ stage }}">{% for deal in deals_by_stage[stage] %}<article class="deal-card" {% if can_edit_sales %}draggable="true"{% endif %} data-deal-id="{{ deal.id }}" data-value="{{ deal.value or 0 }}" data-update-url="{{ url_for('update_deal_stage',deal_id=deal.id) }}"><span class="tag">Deal #{{ deal.id }}</span><h3><a href="{{ url_for('deal_detail',deal_id=deal.id) }}">{{ deal.company.name }}</a></h3><div class="service">{{ deal.primary_contact.name if deal.primary_contact else 'No contact linked' }}</div><div class="deal-value"><small>LKR</small> {{ '{:,.2f}'.format(deal.value or 0) }}</div><div class="card-meta"><span>{{ deal.owner.name if deal.owner else 'Unassigned' }}</span><span>{{ deal.close_date.strftime('%d %b') if deal.close_date else 'No date' }}</span></div>{% if can_edit_sales %}<label class="visually-hidden" for="stage-{{ deal.id }}">Stage for {{ deal.company.name }}</label><select id="stage-{{ deal.id }}" data-stage-select>{% for s in stages %}<option value="{{ s }}" {% if s==stage %}selected{% endif %}>{{ s|replace('_',' ')|capitalize }}</option>{% endfor %}</select>{% endif %}</article>{% endfor %}</div></section>{% else %}<div class="panel empty-copy">No stages configured.{% if can_manage %} <a href="{{ url_for('manage_stages') }}">Add pipeline stages</a>.{% endif %}</div>{% endfor %}</div>
+{% if can_edit_sales %}<script>
+(()=>{let dragged=null,busy=false;const columns=[...document.querySelectorAll('.stage-column')],status=document.getElementById('pipelineStatus');
+function refresh(){columns.forEach(c=>{const cards=[...c.querySelectorAll('.deal-card')];document.querySelectorAll('[data-count-for]').forEach(b=>{if(b.dataset.countFor===c.dataset.stage)b.textContent=cards.length;});document.querySelectorAll('[data-value-for]').forEach(b=>{if(b.dataset.valueFor===c.dataset.stage)b.textContent=cards.reduce((n,d)=>n+Number(d.dataset.value),0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});});});}
+async function move(card,dest){const old=card.parentElement,select=card.querySelector('select');if(busy||old===dest){select.value=old.dataset.stage;return;}busy=true;document.querySelectorAll('[data-stage-select]').forEach(x=>x.disabled=true);status.textContent='Saving stage...';try{const r=await fetch(card.dataset.updateUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage:dest.dataset.stage})});const data=await r.json();if(!r.ok||!data.success)throw Error(data.error||'Could not save the stage.');dest.appendChild(card);select.value=dest.dataset.stage;refresh();status.textContent='Deal stage updated.';}catch(e){select.value=old.dataset.stage;status.textContent=(e.message||'Could not save the stage.')+' Your deal has not moved.';}finally{busy=false;document.querySelectorAll('[data-stage-select]').forEach(x=>x.disabled=false);}}
+document.querySelectorAll('.deal-card').forEach(c=>{c.addEventListener('dragstart',e=>{if(busy){e.preventDefault();return;}dragged=c;e.dataTransfer.setData('text/plain',c.dataset.dealId);c.classList.add('dragging');});c.addEventListener('dragend',()=>{c.classList.remove('dragging');dragged=null;columns.forEach(x=>x.classList.remove('drag-over'));});c.querySelector('select').addEventListener('change',e=>move(c,columns.find(x=>x.dataset.stage===e.target.value)));});columns.forEach(c=>{c.addEventListener('dragover',e=>{if(dragged&&!busy){e.preventDefault();c.classList.add('drag-over');}});c.addEventListener('dragleave',()=>c.classList.remove('drag-over'));c.addEventListener('drop',e=>{e.preventDefault();c.classList.remove('drag-over');if(dragged)move(dragged,c);});});})();
+</script>{% endif %}{% endblock %}

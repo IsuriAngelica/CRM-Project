@@ -1,20 +1,70 @@
 {% extends "base.html" %}
-{% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-4">
-    <h3 class="mb-3">Sign in</h3>
-    <form method="POST">
-      <div class="mb-3">
-        <label class="form-label">Email</label>
-        <input type="email" name="email" class="form-control" required>
+{% block page_title %}Sign in{% endblock %}
+
+{% block auth_content %}
+<div class="auth">
+  <section class="auth-brand">
+    <div class="brand-plate"><img class="auth-logo" src="{{ url_for('static', filename='img/altrium-logo.png') }}" alt="Altrium"></div>
+    <div class="auth-pitch">
+      <div class="eyebrow">YOUR RELATIONSHIPS. CONNECTED.</div><h1>Ingenuity,<br><span>Empowered.</span></h1>
+      <p>One shared view of every company, contact, lead and deal &mdash; so nothing is lost between a conversation and the delivery.</p>
+    </div>
+<div class="auth-art" aria-hidden="true"></div><div class="auth-brand-footer">Altrium CRM · Sales workspace</div>
+  </section>
+
+  <section class="auth-main">
+    <img class="auth-mobile-logo" src="{{ url_for('static', filename='img/altrium-logo.png') }}" alt="Altrium">
+
+    <form class="auth-form" method="POST" action="{{ url_for('login') }}">
+      <h2>Sign in</h2>
+      <p class="auth-sub">Use your Altrium CRM account.</p>
+
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          {% for message in messages %}
+            <div class="notice notice-error" role="alert">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <div class="field">
+        <label for="email">Email address <span class="required">*</span></label>
+        <input id="email" name="email" type="email" autocomplete="username"
+               required autofocus value="{{ request.form.get('email', '') }}">
       </div>
-      <div class="mb-3">
-        <label class="form-label">Password</label>
-        <input type="password" name="password" class="form-control" required>
+
+      <div class="field">
+        <label for="password">Password <span class="required">*</span></label>
+        <div class="password-field">
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+          <button class="icon-btn" type="button" id="togglePw"
+                  aria-label="Show password" aria-pressed="false">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="2.8"/></svg>
+          </button>
+        </div>
       </div>
-      <button type="submit" class="btn btn-dark w-100">Sign in</button>
+
+      <button class="btn primary auth-submit" type="submit">Sign in</button>
+
+      <p class="auth-foot">
+        <a href="{{ url_for('forgot_password') }}">Forgot your password?</a>
+      </p>
     </form>
-    <a href="{{ url_for('forgot_password') }}" class="d-block text-center mt-3">Forgot password?</a>
-  </div>
+  </section>
 </div>
+
+<script>
+(function () {
+  var btn = document.getElementById('togglePw');
+  var pw  = document.getElementById('password');
+  if (!btn || !pw) return;
+  btn.addEventListener('click', function () {
+    var show = pw.type === 'password';
+    pw.type = show ? 'text' : 'password';
+    btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    pw.focus();
+  });
+})();
+</script>
 {% endblock %}

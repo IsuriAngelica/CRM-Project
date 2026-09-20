@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 class="mb-2">Pipeline stages</h2>
+{% from "_ui.html" import icon %}
+<div class="page-header"><div><div class="eyebrow">{{ ui_section }}</div><h1>Pipeline stages</h1></div></div>
 <p class="text-muted">These control the columns on the Deal Pipeline board and the Stage dropdown when adding or editing a deal.</p>
 
-<table class="table table-bordered bg-white w-50">
-  <thead><tr><th>Order</th><th>Stage name</th><th>Deals using it</th><th></th></tr></thead>
+<div class="panel data-panel" data-record-list><div class="toolbar"><label class="search-field">{{ icon("search") }}<input type="search" data-table-search aria-label="Filter this list" placeholder="Search this list..."></label><span class="muted tiny" data-table-count aria-live="polite"></span></div><div class="table-wrap"><table class="table table-bordered bg-white w-50">
+  <thead><tr><th scope="col">Order</th><th scope="col">Stage name</th><th scope="col">Deals using it</th><th scope="col">Actions</th></tr></thead>
   <tbody>
     {% for stage in stages %}
     <tr>
@@ -14,26 +15,26 @@
       <td>
         <form method="POST" action="{{ url_for('delete_stage', stage_id=stage.id) }}"
               onsubmit="return confirm('Delete this stage?');" class="d-inline">
-          <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+          <button type="submit" class="btn small danger" title="Delete record" aria-label="Delete record">{{ icon("trash") }}</button>
         </form>
       </td>
     </tr>
     {% endfor %}
   </tbody>
-</table>
+</table></div></div>
 
 <h5 class="mt-4">Add a new stage</h5>
 <form method="POST" action="{{ url_for('add_stage') }}" class="row g-2 align-items-end">
   <div class="col-auto">
-    <label class="form-label">Stage name</label>
-    <input type="text" name="name" class="form-control" placeholder="e.g. demo_scheduled" required>
+    <label for="field-stages_list-name-1" class="form-label">Stage name</label>
+    <input id="field-stages_list-name-1" type="text" name="name" class="form-control" placeholder="e.g. demo_scheduled" required>
   </div>
   <div class="col-auto">
-    <label class="form-label">Order position</label>
-    <input type="number" name="position" class="form-control" value="{{ stages|length }}">
+    <label for="field-stages_list-position-2" class="form-label">Order position</label>
+    <input id="field-stages_list-position-2" type="number" name="position" class="form-control" value="{{ stages|length }}">
   </div>
   <div class="col-auto">
-    <button type="submit" class="btn btn-dark">Add stage</button>
+    <button type="submit" class="btn primary">Add stage</button>
   </div>
 </form>
 {% endblock %}
