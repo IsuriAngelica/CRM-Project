@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% import "_forms.html" as f with context %}{% block content %}
+<div class="page-header"><div><div class="eyebrow">{{ ui_section }}</div><h1>Convert lead to deal</h1><p>Complete the details below. Required fields are marked *.</p></div></div>
+<div class="form-layout"><form method="POST" class="panel form-card"><div class="panel-head"><h2>Record details</h2></div><div class="form-body"><div class="form-grid">
+<div class="full notice">Converting {{ lead.display_name }}. The original lead and activity history will be kept.</div>
+{{ f.company_select(companies,lead.company_id or '') }}
+{{ f.input('new_company_name','Or create a new company',lead.company_name if not lead.company_id else '',maxlength=150,hint='Leave this blank when selecting an existing company.') }}
+{{ f.contact_select(contacts,lead.contact_id or '') }}
+<div class="field"><label class="check-label"><input name="create_contact" type="checkbox" {% if fv('create_contact', 'on' if lead.prospect_name and not lead.contact_id else '') == 'on' %}checked{% endif %}> Create a contact from this prospect</label><small>Uses the lead’s name, email and phone. Uncheck when choosing an existing contact.</small></div>
+{{ f.owner_select(users,'owner_id',lead.assigned_rep_id or '') }}
+{% set options=[] %}{% for s in stages %}{% set _=options.append((s,s|capitalize)) %}{% endfor %}{{ f.select('stage','Deal stage',options,stages[0] if stages else '',blank=none) }}
+{{ f.input('value','Deal value (LKR)',type='number') }}{{ f.input('budget','Budget (LKR)',type='number') }}
+{{ f.input('close_date','Expected close date',type='date') }}
+{{ f.textarea('requirements','Agreed requirements') }}
+</div></div><div class="form-footer"><small>Check the details before saving.</small><div class="page-actions"><button type="submit" class="btn primary">Create linked deal</button><a class="btn" href="{{ url_for('lead_detail',lead_id=lead.id) }}">Cancel</a></div></div></form><aside class="form-aside"><div class="eyebrow">WORKSPACE GUIDE</div><h3>One conversion, one deal</h3><p>Select an existing company or create one. You may link an existing contact or create a contact from the prospect details.</p><p>Submitting twice will not create two deals for this lead.</p></aside></div>{% endblock %}

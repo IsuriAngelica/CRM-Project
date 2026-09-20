@@ -1,76 +1,18 @@
 {% extends "base.html" %}
+{% from "_ui.html" import icon %}
 {% block content %}
-<h2 class="mb-4">My Dashboard</h2>
-
-<div class="row mb-4">
-  <div class="col-md-4">
-    <div class="card text-center"><div class="card-body">
-      <h3 class="text-primary">{{ open_deals|length }}</h3>
-      <div class="text-muted">Open deals</div>
-    </div></div>
-  </div>
-  <div class="col-md-4">
-    <div class="card text-center"><div class="card-body">
-      <h3 class="text-success">{{ "%.2f"|format(total_value) }}</h3>
-      <div class="text-muted">Open pipeline value</div>
-    </div></div>
-  </div>
-  <div class="col-md-4">
-    <div class="card text-center"><div class="card-body">
-      <h3 class="text-info">{{ my_leads|length }}</h3>
-      <div class="text-muted">My leads</div>
-    </div></div>
-  </div>
+<div class="page-header"><div><div class="eyebrow">{{ ui_now.strftime('%A, %d %B %Y') }}</div><h1>{{ 'Good morning' if ui_now.hour < 12 else ('Good afternoon' if ui_now.hour < 18 else 'Good evening') }}, {{ current_user.name.split()[0] }}</h1><p>Your relationships. Your next opportunity.</p></div><div class="page-actions"><a class="btn" href="{{ url_for('pipeline') }}">{{ icon('board') }} View pipeline</a>{% if can_edit_sales %}<a class="btn primary" href="{{ url_for('add_deal') }}">{{ icon('plus') }} Add deal</a>{% endif %}</div></div>
+<div class="kpis">
+<div class="kpi"><div class="kpi-label">Open deals {{ icon('deal') }}</div><div class="kpi-value">{{ open_deals|length }}</div><div class="kpi-note">Active opportunities across your pipeline</div></div>
+<div class="kpi featured"><div class="kpi-label">Open pipeline value {{ icon('chart') }}</div><div class="kpi-value"><small>LKR</small>{{ '{:,.2f}'.format(total_value) }}</div><div class="kpi-note">Total value of your open deals</div></div>
+<div class="kpi"><div class="kpi-label">{{ 'My leads' if current_user.role == 'account_executive' else 'Total leads' }} {{ icon('target') }}</div><div class="kpi-value">{{ my_leads|length }}</div><div class="kpi-note">{{ 'Assigned to you' if current_user.role == 'account_executive' else 'Across your workspace' }} · All sources</div></div>
 </div>
-
-<div class="row">
-  <div class="col-md-6">
-    <h5>Reminders due soon</h5>
-    <ul class="list-group mb-4">
-      {% for r in upcoming %}
-      <li class="list-group-item">
-        <strong>{{ r.remind_at.strftime("%d %b %Y, %I:%M %p") }}</strong><br>
-        {{ r.message or "(no message)" }}
-        <div class="small text-muted">
-          {% if r.deal %}Deal: {{ r.deal.company.name }}
-          {% elif r.lead %}Lead: {{ r.lead.company.name if r.lead.company else "Lead #" ~ r.lead.id }}{% endif %}
-        </div>
-      </li>
-      {% else %}
-      <li class="list-group-item text-muted text-center">Nothing due in the next 7 days.</li>
-      {% endfor %}
-    </ul>
-  </div>
-
-  <div class="col-md-6">
-    <h5>Recent activity</h5>
-    <ul class="list-group mb-4">
-      {% for a in recent_activity %}
-      <li class="list-group-item">
-        <span class="badge bg-secondary">{{ a.type }}</span> {{ a.notes }}
-        <div class="small text-muted">{{ a.created_at.strftime("%d %b %Y, %I:%M %p") if a.created_at else "" }}</div>
-      </li>
-      {% else %}
-      <li class="list-group-item text-muted text-center">No activity yet.</li>
-      {% endfor %}
-    </ul>
-  </div>
+<div class="two-col">
+<section class="panel"><div class="panel-head"><div><h2>Pipeline at a glance</h2><p>Opportunities by stage</p></div><a class="panel-title-link" href="{{ url_for('pipeline') }}">View board →</a></div>
+<div class="pipeline-overview">{% set ns=namespace(maximum=1) %}{% for stage in overview_stages %}{% set value=overview_deals|selectattr('stage','equalto',stage)|map(attribute='value')|reject('none')|sum %}{% if value>ns.maximum %}{% set ns.maximum=value %}{% endif %}{% endfor %}
+{% for stage in overview_stages %}{% set records=overview_deals|selectattr('stage','equalto',stage)|list %}{% set value=records|map(attribute='value')|reject('none')|sum %}<div class="stage-bar-row"><span class="stage-name"><span class="dot" style="color:{{ '#69a789' if stage=='won' else '#ca8585' if stage=='lost' else '#d4a538' }}"></span>{{ stage|replace('_',' ')|capitalize }}</span><div class="bar-track"><div class="bar-fill" style="width:{{ (value / ns.maximum * 100)|round(2) }}%;background:{{ '#91c0a7' if stage=='won' else '#d7afb0' if stage=='lost' else '#edbf50' }}"></div></div><span class="numeric muted">{{ records|length }}</span><span class="value">LKR {{ '{:,.0f}'.format(value) }}</span></div>{% else %}<p class="empty-copy">No pipeline stages yet.</p>{% endfor %}</div><div class="panel-foot"><span>{{ overview_deals|length }} total deals</span><span>Live CRM records</span></div></section>
+<section class="panel"><div class="panel-head"><div><h2>Reminders due soon</h2><p>Overdue and the next seven days</p></div><a href="{{ url_for('reminders') }}" class="panel-title-link">View all →</a></div><div class="panel-body">{% for r in upcoming[:4] %}<a class="reminder-item" href="{{ url_for('reminders') }}"><span class="date-box"><small>{{ r.remind_at.strftime('%b')|upper }}</small>{{ r.remind_at.strftime('%d') }}</span><div><h3>{{ r.message }}</h3><p>{% if r.deal %}{{ r.deal.company.name }}{% elif r.lead %}{{ r.lead.display_name }}{% endif %}</p></div><span class="time">{{ r.remind_at.strftime('%H:%M') }}</span></a>{% else %}<div class="empty-copy">Nothing due soon.<br>Your upcoming follow-ups will appear here.</div>{% endfor %}</div></section>
 </div>
-
-<h5>My open deals</h5>
-<table class="table table-bordered bg-white">
-  <thead><tr><th>Company</th><th>Stage</th><th>Value</th><th>Close date</th></tr></thead>
-  <tbody>
-    {% for d in open_deals %}
-    <tr>
-      <td><a href="{{ url_for('deal_detail', deal_id=d.id) }}">{{ d.company.name }}</a></td>
-      <td><span class="badge {{ stage_color(d.stage) }}">{{ d.stage }}</span></td>
-      <td>{{ "%.2f"|format(d.value) if d.value is not none else "-" }}</td>
-      <td>{{ d.close_date.strftime("%d %b %Y") if d.close_date else "-" }}</td>
-    </tr>
-    {% else %}
-    <tr><td colspan="4" class="text-center text-muted">No open deals.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="two-col section-space"><section class="panel"><div class="panel-head"><div><h2>Open deals</h2><p>Your active opportunities</p></div><a class="panel-title-link" href="{{ url_for('deals') }}">View all →</a></div><div class="table-wrap"><table><thead><tr><th scope="col">Company</th><th scope="col">Stage</th><th scope="col" class="numeric">Value</th><th scope="col">Close date</th></tr></thead><tbody>{% for d in open_deals[:6] %}<tr><td><a class="company-link" href="{{ url_for('deal_detail',deal_id=d.id) }}"><span class="company-monogram">{{ d.company.name[:2]|upper }}</span><span class="primary-text">{{ d.company.name }}</span></a></td><td><span class="badge {{ stage_color(d.stage) }}">{{ d.stage|capitalize }}</span></td><td class="numeric">{{ '{:,.2f}'.format(d.value) if d.value is not none else '—' }}</td><td>{{ d.close_date.strftime('%d %b %Y') if d.close_date else '—' }}</td></tr>{% else %}<tr><td colspan="4" class="empty-copy">No open deals yet.</td></tr>{% endfor %}</tbody></table></div><div class="panel-foot"><span>Showing {{ [open_deals|length,6]|min }} of {{ open_deals|length }} open deals</span><a href="{{ url_for('deals') }}">View deals →</a></div></section>
+<section class="panel"><div class="panel-head"><div><h2>Recent activity</h2><p>Latest updates on leads and deals</p></div>{{ icon('activity') }}</div><div class="panel-body">{% for a in recent_activity[:4] %}<div class="activity"><span class="activity-mark">{{ icon('contact') }}</span><div><p><b>{{ a.type or 'Activity' }}</b> · {{ a.related_type }} #{{ a.related_id }}</p><small>{{ a.notes or 'No notes' }}</small><small>{{ a.created_at.strftime('%d %b %Y, %I:%M %p') if a.created_at else '' }}</small></div></div>{% else %}<div class="empty-copy">No activity yet.<br>Log a conversation on a lead or deal to get started.</div>{% endfor %}</div></section></div>
 {% endblock %}

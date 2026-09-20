@@ -2,53 +2,200 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>CRM</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block page_title %}{{ ui_page }}{% endblock %} · Altrium CRM</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/altrium.css', v='20260920-product2') }}">
+  <link rel="icon" href="{{ url_for('static', filename='img/altrium-logo.png') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/crm-ui.css', v='20260920-product2') }}">
+<script defer src="{{ url_for('static', filename='js/crm-ui.js', v='20260920-product2') }}"></script>
 </head>
 <body>
-  <nav class="navbar navbar-dark bg-dark mb-4">
-    <div class="container-fluid px-4">
-      <span class="navbar-brand">CRM</span>
-      {% if current_user.is_authenticated %}
-        <form method="GET" action="{{ url_for('search') }}" class="d-flex" style="max-width: 300px;">
-          <input type="search" name="q" class="form-control form-control-sm" placeholder="Search..." value="{{ request.args.get('q', '') }}">
-          <button type="submit" class="btn btn-sm btn-outline-light ms-2">Go</button>
-        </form>
-        <div>
-          <a href="{{ url_for('my_dashboard') }}" class="text-white text-decoration-none ms-3">My Dashboard</a>
-          <a href="{{ url_for('companies') }}" class="text-white text-decoration-none ms-3">Companies</a>
-          <a href="{{ url_for('contacts') }}" class="text-white text-decoration-none ms-3">Contacts</a>
-          <a href="{{ url_for('leads') }}" class="text-white text-decoration-none ms-3">Leads</a>
-          <a href="{{ url_for('deals') }}" class="text-white text-decoration-none ms-3">Deals</a>
-          <a href="{{ url_for('pipeline') }}" class="text-white text-decoration-none ms-3">Pipeline</a>
-          <a href="{{ url_for('reminders') }}" class="text-white text-decoration-none ms-3">Reminders</a>
-          <a href="{{ url_for('handoff') }}" class="text-white text-decoration-none ms-3">Handoff</a>
-          {% if can_view_leadership %}
-            <a href="{{ url_for('company_dashboard') }}" class="text-white text-decoration-none ms-3">Company View</a>
-            <a href="{{ url_for('monthly_report') }}" class="text-white text-decoration-none ms-3">Report</a>
-          {% endif %}
-          {% if can_manage %}
-            <a href="{{ url_for('manage_stages') }}" class="text-white text-decoration-none ms-3">Stages</a>
-            <a href="{{ url_for('users') }}" class="text-white text-decoration-none ms-3">Users</a>
-          {% endif %}
-          <a href="{{ url_for('change_password') }}" class="text-white text-decoration-none ms-3">Password</a>
-          <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm ms-3">Log out</a>
-        </div>
-      {% endif %}
-    </div>
-  </nav>
-  <div class="container">
-    {% if is_read_only %}
-      <div class="alert alert-info">You have read-only access. You can view records but cannot change them.</div>
+{% from "_ui.html" import icon %}
+<a class="skip-link" href="#main">Skip to content</a>
+
+{% if current_user.is_authenticated %}
+<aside class="sidebar" id="sidebar">
+  <a class="brand" href="{{ url_for('my_dashboard') }}" aria-label="Altrium CRM home">
+    <img src="{{ url_for('static', filename='img/altrium-logo.png') }}" alt="Altrium">
+  </a>
+  <button class="icon-btn mobile-close" id="sidebarClose" type="button" aria-label="Close navigation">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+  </button>
+
+  <div class="workspace">
+    <span class="workspace-mark" aria-hidden="true">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>
+    </span>
+    <span>
+      <strong>Altrium CRM</strong>
+      <small>Sales workspace</small>
+    </span>
+  </div>
+
+  <nav class="navigation" aria-label="Main">
+    <p class="nav-label">Workspace</p>
+
+    <a class="nav-item {% if request.endpoint == 'my_dashboard' %}active{% endif %}" href="{{ url_for('my_dashboard') }}">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      Overview
+    </a>
+
+    <a class="nav-item {% if request.endpoint in ['companies','add_company','edit_company','company_detail'] %}active{% endif %}" href="{{ url_for('companies') }}">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 8h2M9 12h2M9 16h2M14 8h1M14 12h1M14 16h1"/></svg>
+      Companies
+    </a>
+
+    <a class="nav-item {% if request.endpoint in ['contacts','add_contact','edit_contact','contact_detail'] %}active{% endif %}" href="{{ url_for('contacts') }}">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="10" cy="11" r="2.4"/><path d="M6.5 17c.7-1.7 2-2.5 3.5-2.5s2.8.8 3.5 2.5"/></svg>
+      Contacts
+    </a>
+
+    <a class="nav-item {% if request.endpoint in ['leads','add_lead','edit_lead','lead_detail'] %}active{% endif %}" href="{{ url_for('leads') }}">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/></svg>
+      Leads
+    </a>
+
+    <a class="nav-item {% if request.endpoint in ['deals','add_deal','edit_deal','deal_detail'] %}active{% endif %}" href="{{ url_for('deals') }}">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/></svg>
+      Deals
+    </a>
+
+    <a class="nav-item {% if request.endpoint == 'pipeline' %}active{% endif %}" href="{{ url_for('pipeline') }}">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>
+      Pipeline
+    </a>
+
+    <a class="nav-item {% if request.endpoint in ['reminders','add_reminder'] %}active{% endif %}" href="{{ url_for('reminders') }}">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"/><path d="M10.5 20a2 2 0 0 0 3 0"/></svg>
+      Reminders
+    </a>
+
+    <a class="nav-item {% if request.endpoint == 'handoff' %}active{% endif %}" href="{{ url_for('handoff') }}">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h13l-3-3M20 15H7l3 3"/></svg>
+      Delivery handoff
+    </a>
+
+    {% if can_view_leadership %}
+    <p class="nav-label">Insights</p>
+
+    <a class="nav-item {% if request.endpoint == 'company_dashboard' %}active{% endif %}" href="{{ url_for('company_dashboard') }}">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+      Company overview
+    </a>
+
+    <a class="nav-item {% if request.endpoint == 'monthly_report' %}active{% endif %}" href="{{ url_for('monthly_report') }}">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+      Reports
+    </a>
     {% endif %}
+
+    <p class="nav-label">Administration</p>
+
+    {% if can_manage %}
+    <a class="nav-item {% if request.endpoint == 'manage_stages' %}active{% endif %}" href="{{ url_for('manage_stages') }}">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg>
+      Pipeline stages
+    </a>
+
+    <a class="nav-item {% if request.endpoint in ['users','add_user','edit_user'] %}active{% endif %}" href="{{ url_for('users') }}">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.9-3 3.3-4.5 6-4.5s5.1 1.5 6 4.5"/><path d="M17 8.5a2.7 2.7 0 0 1 0 5M18 19c-.3-1.6-1-2.9-2-3.8"/></svg>
+      Users
+    </a>
+    {% endif %}
+
+    <a class="nav-item {% if request.endpoint == 'change_password' %}active{% endif %}" href="{{ url_for('change_password') }}">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      Security
+    </a>
+  </nav>
+
+  <div class="sidebar-bottom">
+    <span class="avatar dark">{{ current_user.name[:1]|upper }}</span>
+    <span>
+      <strong>{{ current_user.name }}</strong>
+      <small>{{ current_user.role|replace('_',' ')|title }}</small>
+    </span>
+    <a class="icon-btn" href="{{ url_for('logout') }}" aria-label="Sign out" title="Sign out">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 17l5-5-5-5M20 12H9M12 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6"/></svg>
+    </a>
+  </div>
+</aside>
+
+<div class="sidebar-scrim" id="sidebarScrim" hidden></div>
+
+<div class="shell">
+  <header class="topbar">
+    <button class="icon-btn mobile-toggle" id="sidebarOpen" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <span>{% block breadcrumb_section %}{{ ui_section }}{% endblock %}</span>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      <b>{% block breadcrumb_page %}{{ ui_page }}{% endblock %}</b>
+    </nav>
+
+    <form class="global-search" method="GET" action="{{ url_for('search') }}" role="search">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+      <label class="visually-hidden" for="globalSearch">Search records</label>
+      <input id="globalSearch" type="search" name="q" placeholder="Search anything..." value="{{ request.args.get('q', '') }}">
+      <button class="icon-btn" type="submit" aria-label="Search records">{{ icon("search") }}</button>
+    </form>
+  </header>
+
+  <main id="main" tabindex="-1" class="content {% if request.endpoint == 'my_dashboard' %}dashboard{% endif %}">
+    {% if is_read_only %}
+      <div class="notice notice-info" role="status">
+        {% if can_update_build %}You can view sales records and update delivery build status.{% else %}You have read-only access to CRM records.{% endif %}
+      </div>
+    {% endif %}
+
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}">{{ message }}</div>
+          <div class="notice notice-{{ 'success' if category == 'success' else 'error' }}" role="alert">{{ message }}</div>
         {% endfor %}
       {% endif %}
     {% endwith %}
+
     {% block content %}{% endblock %}
-  </div>
+    <footer class="bottom-note"><span>Altrium CRM &nbsp;·&nbsp; Sales workspace</span><span>{{ current_user.role|replace("_", " ")|title }}</span></footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  var sidebar = document.getElementById('sidebar');
+  var scrim   = document.getElementById('sidebarScrim');
+  var openBtn = document.getElementById('sidebarOpen');
+  var closeBtn= document.getElementById('sidebarClose');
+  if (!sidebar) return;
+
+  function setOpen(open) {
+    sidebar.classList.toggle('open', open);
+    scrim.hidden = !open;
+    openBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) { (sidebar.querySelector('.nav-item') || closeBtn).focus(); }
+    else { openBtn.focus(); }
+  }
+  openBtn && openBtn.addEventListener('click', function(){ setOpen(true); });
+  closeBtn && closeBtn.addEventListener('click', function(){ setOpen(false); });
+  scrim && scrim.addEventListener('click', function(){ setOpen(false); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && sidebar.classList.contains('open')) setOpen(false);
+  });
+
+  document.querySelectorAll('form[data-confirm]').forEach(function (f) {
+    f.addEventListener('submit', function (e) {
+      if (!window.confirm(f.getAttribute('data-confirm'))) e.preventDefault();
+    });
+  });
+})();
+</script>
+
+{% else %}
+  {% block auth_content %}{% endblock %}
+{% endif %}
+
 </body>
 </html>

@@ -1,24 +1,8 @@
-{% extends "base.html" %}
-{% block content %}
-<h2 class="mb-3">{{ "Edit company" if company else "Add company" }}</h2>
-<form method="POST">
-  <div class="mb-3">
-    <label class="form-label">Company name</label>
-    <input type="text" name="name" class="form-control" value="{{ company.name if company else '' }}" required>
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Industry</label>
-    <input type="text" name="industry" class="form-control" value="{{ company.industry if company else '' }}">
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Phone</label>
-    <input type="text" name="phone" class="form-control" value="{{ company.phone if company else '' }}">
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Address</label>
-    <input type="text" name="address" class="form-control" value="{{ company.address if company else '' }}">
-  </div>
-  <button type="submit" class="btn btn-dark">Save company</button>
-  <a href="{{ url_for('companies') }}" class="btn btn-outline-secondary">Cancel</a>
-</form>
-{% endblock %}
+{% extends "base.html" %}{% import "_forms.html" as f with context %}{% block content %}
+<div class="page-header"><div><div class="eyebrow">{{ ui_section }}</div><h1>{{ 'Edit company' if company else 'Add company' }}</h1><p>Complete the details below. Required fields are marked *.</p></div></div>
+<div class="form-layout"><form method="POST" class="panel form-card"><div class="panel-head"><h2>Record details</h2></div><div class="form-body"><div class="form-grid">
+{{ f.input('name','Company name',company.name if company else '',required=true,maxlength=150) }}
+{{ f.input('industry','Industry',company.industry if company else '',maxlength=100) }}
+{{ f.input('phone','Phone number',company.phone if company else '',type='tel',maxlength=30) }}
+{{ f.input('address','Address',company.address if company else '',maxlength=255) }}
+</div></div><div class="form-footer"><small>Check the details before saving.</small><div class="page-actions"><button type="submit" class="btn primary">Save company</button><a class="btn" href="{{ url_for('companies') }}">Cancel</a></div></div></form><aside class="form-aside"><div class="eyebrow">WORKSPACE GUIDE</div><h3>Keep company records consistent</h3><p>Search existing companies before adding another. Company names must be unique in the application.</p></aside></div>{% endblock %}

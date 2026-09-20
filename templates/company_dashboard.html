@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 class="mb-4">Company-wide Pipeline</h2>
+<div class="page-header"><div><div class="eyebrow">{{ ui_section }}</div><h1>Company overview</h1></div></div>
 
 <div class="row mb-4">
   <div class="col-md-3">
@@ -29,42 +29,4 @@
   </div>
 </div>
 
-<div class="row">
-  <div class="col-md-7">
-    <h5>Deals by stage</h5>
-    <table class="table table-bordered bg-white">
-      <thead><tr><th>Stage</th><th>Deals</th><th>Value</th></tr></thead>
-      <tbody>
-        {% for s in stages %}
-        <tr>
-          <td><span class="badge {{ stage_color(s) }}">{{ s }}</span></td>
-          <td>{{ deals_by_stage[s]|length }}</td>
-          <td>{{ "%.2f"|format(stage_values[s]) }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-      <tfoot>
-        <tr class="fw-bold">
-          <td>Won / Lost</td>
-          <td>{{ won|length }} won, {{ lost|length }} lost</td>
-          <td>&mdash;</td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-
-  <div class="col-md-5">
-    <h5>Leads by source ({{ total_leads }} total)</h5>
-    <table class="table table-bordered bg-white">
-      <thead><tr><th>Source</th><th>Count</th></tr></thead>
-      <tbody>
-        {% for source, count in leads_by_source.items() %}
-        <tr><td>{{ source }}</td><td>{{ count }}</td></tr>
-        {% else %}
-        <tr><td colspan="2" class="text-center text-muted">No leads yet.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-{% endblock %}
+<div class="two-col"><section class="panel"><div class="panel-head"><div><h2>Deals by stage</h2><p>Company-wide pipeline distribution</p></div><a class="text-link small" href="{{ url_for('pipeline') }}">View board →</a></div><div class="pipeline-overview">{% set maximum=([1]+stage_values.values()|list)|max %}{% for stage in stages %}<div class="stage-bar-row"><span class="stage-name"><span class="dot" style="color:{{ '#69a789' if stage=='won' else '#ca8585' if stage=='lost' else '#d4a538' }}"></span>{{ stage|capitalize }}</span><div class="bar-track"><div class="bar-fill" style="width:{{ stage_values[stage]/maximum*100 }}%;background:{{ '#91c0a7' if stage=='won' else '#d7afb0' if stage=='lost' else '#edbf50' }}"></div></div><span class="numeric">{{ deals_by_stage[stage]|length }}</span><span class="value">LKR {{ '{:,.0f}'.format(stage_values[stage]) }}</span></div>{% endfor %}</div><div class="panel-foot"><span>{{ won|length }} won · {{ lost|length }} lost</span><span>{{ total_deals }} deals</span></div></section><section class="panel"><div class="panel-head"><div><h2>Leads by source</h2><p>{{ total_leads }} leads across your workspace</p></div></div><div class="table-wrap"><table><thead><tr><th scope="col">Source</th><th scope="col" class="numeric">Leads</th></tr></thead><tbody>{% for source,count in leads_by_source.items() %}<tr><td>{{ source }}</td><td class="numeric">{{ count }}</td></tr>{% else %}<tr><td colspan="2" class="empty-copy">No leads yet.</td></tr>{% endfor %}</tbody></table></div></section></div>{% endblock %}
